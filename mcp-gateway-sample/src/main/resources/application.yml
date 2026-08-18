@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: mcp-gateway-sample
+
+# Full mcp.gateway.* configuration reference lands here once routing, policy,
+# observability and rate-limiting are implemented (see project README).
