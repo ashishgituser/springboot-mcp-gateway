@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="770" viewBox="0 0 1240 770" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#0078D4"/>
+    </marker>
+    <marker id="arwg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#8A8886"/>
+    </marker>
+  </defs>
+
+  <rect width="1240" height="770" fill="#FFFFFF"/>
+  <text x="30" y="42" font-size="21" font-weight="600" fill="#243A5E">Spring Boot MCP Gateway</text>
+  <text x="30" y="64" font-size="13" fill="#605E5C">One MCP endpoint in front of many MCP servers — routing, policy, observability and quota enforced centrally.</text>
+
+  <!-- ============ CLIENTS ============ -->
+  <rect x="30" y="110" width="212" height="290" rx="8" fill="#F3F9FD" stroke="#0078D4" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="46" y="134" font-size="12" font-weight="600" fill="#0078D4" letter-spacing="0.4">CLIENTS / AI AGENTS</text>
+
+  <g>
+    <rect x="50" y="150" width="172" height="64" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="64" y="168" width="26" height="26" rx="5" fill="#0078D4"/>
+    <circle cx="77" cy="181" r="6.5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="102" y="176" font-size="13" font-weight="600" fill="#243A5E">Desktop / IDE agent</text>
+    <text x="102" y="194" font-size="11" fill="#605E5C">Claude Desktop, IDE plugins</text>
+  </g>
+  <g>
+    <rect x="50" y="232" width="172" height="64" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="64" y="250" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M70 263 h14 M77 256 v14" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <text x="102" y="258" font-size="13" font-weight="600" fill="#243A5E">LLM applications</text>
+    <text x="102" y="276" font-size="11" fill="#605E5C">Spring AI / LangChain agents</text>
+  </g>
+  <g>
+    <rect x="50" y="314" width="172" height="64" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="64" y="332" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M70 345 l5 5 l9 -10" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="102" y="340" font-size="13" font-weight="600" fill="#243A5E">Automation / CI</text>
+    <text x="102" y="358" font-size="11" fill="#605E5C">scripted MCP tool calls</text>
+  </g>
+
+  <!-- client bus into the gateway -->
+  <path d="M222 182 H282 M222 264 H282 M222 346 H282 M282 182 V346" fill="none" stroke="#0078D4" stroke-width="1.4"/>
+  <path d="M282 182 H331" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="50" y="424" font-size="11" fill="#0078D4">All clients speak plain MCP over Streamable HTTP</text>
+
+  <!-- ============ GATEWAY APP ============ -->
+  <rect x="310" y="80" width="520" height="560" rx="10" fill="#F3F9FD" stroke="#0078D4" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="326" y="104" font-size="12" font-weight="600" fill="#0078D4" letter-spacing="0.4">YOUR SPRING BOOT APP · mcp-gateway-spring-boot-starter</text>
+
+  <g>
+    <rect x="335" y="120" width="290" height="62" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="351" y="138" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M358 151 h12 M364 145 l6 6 l-6 6" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="389" y="146" font-size="13.5" font-weight="600" fill="#243A5E">MCP server endpoint · /mcp</text>
+    <text x="389" y="164" font-size="11" fill="#605E5C">single entry point, servlet transport</text>
+  </g>
+  <path d="M480 182 V218" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+
+  <g>
+    <rect x="335" y="222" width="290" height="62" rx="6" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
+    <rect x="351" y="240" width="26" height="26" rx="5" fill="#8A8886"/>
+    <path d="M359 253 v-4 a5 5 0 0 1 10 0 v4" stroke="#FFFFFF" stroke-width="2" fill="none"/>
+    <rect x="357" y="252" width="14" height="9" rx="2" fill="#FFFFFF"/>
+    <text x="389" y="248" font-size="13.5" font-weight="600" fill="#243A5E">Auth &amp; policy enforcement</text>
+    <text x="389" y="266" font-size="11" fill="#605E5C">OAuth2 / JWT · per-tool allow rules</text>
+    <rect x="566" y="230" width="50" height="16" rx="8" fill="#EDEBE9"/>
+    <text x="573" y="242" font-size="9.5" font-weight="600" fill="#605E5C">PLANNED</text>
+  </g>
+  <path d="M480 284 V320" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+
+  <g>
+    <rect x="335" y="324" width="290" height="62" rx="6" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
+    <rect x="351" y="342" width="26" height="26" rx="5" fill="#8A8886"/>
+    <circle cx="364" cy="355" r="7" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M364 351 v4 l3 3" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <text x="389" y="350" font-size="13.5" font-weight="600" fill="#243A5E">Rate limiting &amp; quota</text>
+    <text x="389" y="368" font-size="11" fill="#605E5C">Bucket4j · per client and per tool</text>
+    <rect x="566" y="332" width="50" height="16" rx="8" fill="#EDEBE9"/>
+    <text x="573" y="344" font-size="9.5" font-weight="600" fill="#605E5C">PLANNED</text>
+  </g>
+  <path d="M480 386 V422" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+
+  <g>
+    <rect x="335" y="426" width="290" height="62" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="351" y="444" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M358 463 l6 -6 h6 M364 457 l-6 -6" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="389" y="452" font-size="13.5" font-weight="600" fill="#243A5E">Gateway router</text>
+    <text x="389" y="470" font-size="11" fill="#605E5C">serverId__toolName → owning upstream</text>
+  </g>
+  <path d="M480 488 V524" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+
+  <g>
+    <rect x="335" y="528" width="290" height="62" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="351" y="546" width="26" height="26" rx="5" fill="#0078D4"/>
+    <circle cx="359" cy="559" r="3" fill="#FFFFFF"/>
+    <circle cx="369" cy="553" r="3" fill="#FFFFFF"/>
+    <circle cx="369" cy="565" r="3" fill="#FFFFFF"/>
+    <path d="M361 557 l6 -3 M361 561 l6 3" stroke="#FFFFFF" stroke-width="1.4"/>
+    <text x="389" y="554" font-size="13.5" font-weight="600" fill="#243A5E">Upstream client pool</text>
+    <text x="389" y="572" font-size="11" fill="#605E5C">one MCP client per configured server</text>
+  </g>
+
+  <g>
+    <rect x="650" y="120" width="160" height="260" rx="6" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
+    <rect x="666" y="138" width="26" height="26" rx="5" fill="#8A8886"/>
+    <path d="M672 157 l5 -8 l4 5 l5 -9" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="666" y="188" font-size="13.5" font-weight="600" fill="#243A5E">Observability</text>
+    <text x="666" y="212" font-size="11" fill="#605E5C">Micrometer metrics</text>
+    <text x="666" y="232" font-size="11" fill="#605E5C">OpenTelemetry traces</text>
+    <text x="666" y="252" font-size="11" fill="#605E5C">audit log per tool call</text>
+    <text x="666" y="286" font-size="11" fill="#605E5C">Every stage reports</text>
+    <text x="666" y="302" font-size="11" fill="#605E5C">here — one place to</text>
+    <text x="666" y="318" font-size="11" fill="#605E5C">watch all MCP traffic.</text>
+    <rect x="666" y="340" width="50" height="16" rx="8" fill="#EDEBE9"/>
+    <text x="673" y="352" font-size="9.5" font-weight="600" fill="#605E5C">PLANNED</text>
+  </g>
+  <path d="M625 253 H646" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
+  <path d="M625 355 H646" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
+
+  <g>
+    <rect x="650" y="420" width="160" height="100" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="666" y="438" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M672 445 h14 M672 451 h14 M672 457 h9" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <text x="666" y="486" font-size="13.5" font-weight="600" fill="#243A5E">Tool registry</text>
+    <text x="666" y="504" font-size="11" fill="#605E5C">merged tool catalog</text>
+  </g>
+  <path d="M629 459 H646" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+
+  <!-- ============ UPSTREAMS ============ -->
+  <rect x="898" y="110" width="312" height="410" rx="8" fill="#F3F9FD" stroke="#0078D4" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="914" y="134" font-size="12" font-weight="600" fill="#0078D4" letter-spacing="0.4">UPSTREAM MCP SERVERS</text>
+
+  <g>
+    <rect x="918" y="160" width="272" height="70" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="934" y="182" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M940 193 v10 h14 v-12 h-7 l-2 -2 h-5 z" fill="#FFFFFF"/>
+    <text x="972" y="188" font-size="13" font-weight="600" fill="#243A5E">filesystem</text>
+    <text x="972" y="206" font-size="11" fill="#605E5C">readFile, writeFile, listDir</text>
+    <text x="972" y="222" font-size="10.5" fill="#8A8886">exposed as filesystem__readFile</text>
+  </g>
+  <g>
+    <rect x="918" y="250" width="272" height="70" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="934" y="272" width="26" height="26" rx="5" fill="#0078D4"/>
+    <ellipse cx="947" cy="281" rx="7" ry="3" fill="#FFFFFF"/>
+    <path d="M940 281 v8 a7 3 0 0 0 14 0 v-8" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+    <text x="972" y="278" font-size="13" font-weight="600" fill="#243A5E">database</text>
+    <text x="972" y="296" font-size="11" fill="#605E5C">query, describeSchema</text>
+    <text x="972" y="312" font-size="10.5" fill="#8A8886">exposed as database__query</text>
+  </g>
+  <g>
+    <rect x="918" y="340" width="272" height="70" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="934" y="362" width="26" height="26" rx="5" fill="#0078D4"/>
+    <path d="M940 375 h14 M947 368 v14" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <text x="972" y="368" font-size="13" font-weight="600" fill="#243A5E">internal services</text>
+    <text x="972" y="386" font-size="11" fill="#605E5C">your own MCP servers</text>
+    <text x="972" y="402" font-size="10.5" fill="#8A8886">any Streamable HTTP endpoint</text>
+  </g>
+  <g>
+    <rect x="918" y="430" width="272" height="70" rx="6" fill="#FFFFFF" stroke="#C8C6C4"/>
+    <rect x="934" y="452" width="26" height="26" rx="5" fill="#0078D4"/>
+    <circle cx="947" cy="465" r="7" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M940 465 h14 M947 458 a10 10 0 0 1 0 14 a10 10 0 0 1 0 -14" fill="none" stroke="#FFFFFF" stroke-width="1.4"/>
+    <text x="972" y="458" font-size="13" font-weight="600" fill="#243A5E">third-party SaaS</text>
+    <text x="972" y="476" font-size="11" fill="#605E5C">vendor-hosted MCP servers</text>
+    <text x="972" y="492" font-size="10.5" fill="#8A8886">credentials held by the gateway</text>
+  </g>
+
+  <!-- gateway to upstream fan-out -->
+  <path d="M625 559 H864 M864 195 V559" fill="none" stroke="#0078D4" stroke-width="1.6"/>
+  <path d="M864 195 H914 M864 285 H914 M864 375 H914 M864 465 H914" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="640" y="582" font-size="11" fill="#0078D4">MCP client calls · Streamable HTTP</text>
+  <path d="M862 534 H814" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
+  <text x="678" y="538" font-size="10.5" fill="#8A8886">tools/list at startup → registry</text>
+
+  <!-- ============ LEGEND ============ -->
+  <line x1="30" y1="672" x2="1210" y2="672" stroke="#EDEBE9" stroke-width="1"/>
+  <rect x="30" y="694" width="18" height="18" rx="4" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented today — multi-server routing and tool aggregation</text>
+  <rect x="470" y="694" width="18" height="18" rx="4" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
+  <text x="496" y="707" font-size="12" fill="#605E5C">Planned — auth/policy, observability, rate limiting</text>
+  <path d="M840 703 H872" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="880" y="707" font-size="12" fill="#605E5C">request path</text>
+  <path d="M985 703 H1017" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
+  <text x="1025" y="707" font-size="12" fill="#605E5C">metadata / telemetry</text>
+</svg>

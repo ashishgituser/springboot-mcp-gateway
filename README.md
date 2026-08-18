@@ -4,6 +4,12 @@ A Spring Boot starter that puts a single gateway in front of multiple [MCP](http
 
 > **Status:** early development. Multi-server routing/aggregation is implemented; policy, observability and rate limiting are being built module by module. Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
 
+## Architecture
+
+<img src="docs/architecture.svg" alt="Architecture: clients call one MCP endpoint; the gateway authenticates, throttles, routes and fans out to upstream MCP servers" width="100%">
+
+Clients connect to a single MCP endpoint. The gateway authenticates the caller, applies quota, resolves the namespaced tool name to the upstream that owns it, and forwards the call over an MCP client connection. Tool catalogs from every upstream are merged into one registry at startup, so clients see a single list of tools.
+
 ## Why
 
 Teams running several internal MCP servers end up duplicating auth, logging and throttling in each one. This gateway centralizes that: agents/clients talk to one MCP endpoint, and the gateway aggregates upstream tools, enforces who can call what, and gives you metrics and audit logs for every call.
