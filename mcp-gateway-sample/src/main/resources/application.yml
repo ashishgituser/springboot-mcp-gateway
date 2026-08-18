@@ -2,5 +2,12 @@ spring:
   application:
     name: mcp-gateway-sample
 
-# Full mcp.gateway.* configuration reference lands here once routing, policy,
-# observability and rate-limiting are implemented (see project README).
+# mcp:
+#   gateway:
+#     mcp-endpoint: /mcp
+#     servers:
+#       - id: filesystem
+#         endpoint: http://localhost:8081/mcp
+#
+# Auth/policy, observability and rate-limiting configuration land here in later phases
+# (see project README).
