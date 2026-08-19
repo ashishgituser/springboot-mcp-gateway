@@ -2,13 +2,17 @@ package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
+import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 
@@ -16,7 +20,9 @@ class McpGatewayAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
-          .withConfiguration(AutoConfigurations.of(McpGatewayAutoConfiguration.class));
+          .withConfiguration(
+              AutoConfigurations.of(
+                  McpGatewayAutoConfiguration.class, UpstreamHealthAutoConfiguration.class));
 
   @Test
   void wiresAllGatewayBeansWithNoServersConfigured() {
@@ -30,7 +36,35 @@ class McpGatewayAutoConfigurationTest {
           assertThat(context).hasSingleBean(McpSyncServer.class);
           assertThat(context).hasSingleBean(HttpServletStreamableServerTransportProvider.class);
           assertThat(context).hasSingleBean(ServletRegistrationBean.class);
+          assertThat(context).hasSingleBean(ObservationRegistry.class);
+          assertThat(context).hasSingleBean(AuditLogger.class);
+          assertThat(context).hasSingleBean(HealthIndicator.class);
         });
+  }
+
+  @Test
+  void auditLoggerIsSlf4jByDefault() {
+    contextRunner.run(
+        context ->
+            assertThat(context.getBean(AuditLogger.class)).isInstanceOf(Slf4jAuditLogger.class));
+  }
+
+  @Test
+  void auditLoggerIsNoopWhenDisabled() {
+    contextRunner
+        .withPropertyValues("mcp.gateway.audit.enabled=false")
+        .run(
+            context ->
+                assertThat(context.getBean(AuditLogger.class))
+                    .isNotInstanceOf(Slf4jAuditLogger.class));
+  }
+
+  @Test
+  void registersTheUpstreamsHealthIndicator() {
+    contextRunner.run(
+        context ->
+            assertThat(context.getBean("upstreamsHealthIndicator"))
+                .isInstanceOf(UpstreamHealthIndicator.class));
   }
 
   @Test

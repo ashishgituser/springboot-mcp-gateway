@@ -99,18 +99,16 @@
   </g>
 
   <g>
-    <rect x="650" y="120" width="160" height="260" rx="6" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
-    <rect x="666" y="138" width="26" height="26" rx="5" fill="#8A8886"/>
+    <rect x="650" y="120" width="160" height="260" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="666" y="138" width="26" height="26" rx="5" fill="#0078D4"/>
     <path d="M672 157 l5 -8 l4 5 l5 -9" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
     <text x="666" y="188" font-size="13.5" font-weight="600" fill="#243A5E">Observability</text>
     <text x="666" y="212" font-size="11" fill="#605E5C">Micrometer metrics</text>
-    <text x="666" y="232" font-size="11" fill="#605E5C">OpenTelemetry traces</text>
-    <text x="666" y="252" font-size="11" fill="#605E5C">audit log per tool call</text>
+    <text x="666" y="232" font-size="11" fill="#605E5C">/actuator health per upstream</text>
+    <text x="666" y="252" font-size="11" fill="#605E5C">structured JSON audit log</text>
     <text x="666" y="286" font-size="11" fill="#605E5C">Every stage reports</text>
     <text x="666" y="302" font-size="11" fill="#605E5C">here — one place to</text>
     <text x="666" y="318" font-size="11" fill="#605E5C">watch all MCP traffic.</text>
-    <rect x="666" y="340" width="50" height="16" rx="8" fill="#EDEBE9"/>
-    <text x="673" y="352" font-size="9.5" font-weight="600" fill="#605E5C">PLANNED</text>
   </g>
   <path d="M625 253 H646" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
   <path d="M625 355 H646" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
@@ -173,9 +171,9 @@
   <!-- ============ LEGEND ============ -->
   <line x1="30" y1="672" x2="1210" y2="672" stroke="#EDEBE9" stroke-width="1"/>
   <rect x="30" y="694" width="18" height="18" rx="4" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
-  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented today — routing/aggregation, auth &amp; policy enforcement</text>
+  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented today — routing/aggregation, auth &amp; policy, observability</text>
   <rect x="470" y="694" width="18" height="18" rx="4" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
-  <text x="496" y="707" font-size="12" fill="#605E5C">Planned — observability, rate limiting</text>
+  <text x="496" y="707" font-size="12" fill="#605E5C">Planned — rate limiting</text>
   <path d="M840 703 H872" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
   <text x="880" y="707" font-size="12" fill="#605E5C">request path</text>
   <path d="M985 703 H1017" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>

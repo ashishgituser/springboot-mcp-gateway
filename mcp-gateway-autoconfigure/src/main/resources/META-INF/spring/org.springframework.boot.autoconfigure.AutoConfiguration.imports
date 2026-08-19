@@ -1,1 +1,2 @@
 io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayAutoConfiguration
+io.github.ashishgituser.mcpgateway.autoconfigure.UpstreamHealthAutoConfiguration

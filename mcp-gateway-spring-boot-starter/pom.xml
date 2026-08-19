@@ -41,5 +41,17 @@
       <artifactId>mcp-server-security-spring-boot</artifactId>
       <optional>true</optional>
     </dependency>
+
+    <!--
+      Optional: exposes /actuator/health (with a per-upstream "upstreams" indicator that pings
+      each MCP session) and /actuator/metrics (tool call counts/latency via Micrometer). Without
+      it the gateway still records the same data through the ObservationRegistry API, it's just
+      not exported anywhere.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
 </project>

@@ -1,6 +1,8 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayProperties.Policy.Rule;
+import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
+import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
 import io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyRule;
@@ -11,6 +13,7 @@ import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamClientFactory;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServer;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServerDefinition;
+import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -82,9 +85,30 @@ public class McpGatewayAutoConfiguration {
     return new PolicyRule(rule.effect(), rule.principals(), rule.roles(), tools);
   }
 
+  /**
+   * Backs off to a no-op registry when Micrometer's observation handlers aren't wired up (i.e.
+   * Actuator isn't on the classpath), so tool calls are still observed for free the moment it is.
+   */
   @Bean
-  public GatewayRouter gatewayRouter(ToolRegistry toolRegistry, PolicyEngine policyEngine) {
-    return new GatewayRouter(toolRegistry, policyEngine);
+  @ConditionalOnMissingBean(ObservationRegistry.class)
+  public ObservationRegistry observationRegistry() {
+    return ObservationRegistry.NOOP;
+  }
+
+  /** Off only if explicitly disabled — unlike policy, logging every call changes nothing. */
+  @Bean
+  @ConditionalOnMissingBean(AuditLogger.class)
+  public AuditLogger auditLogger(McpGatewayProperties properties) {
+    return properties.audit().enabled() ? new Slf4jAuditLogger() : AuditLogger.noop();
+  }
+
+  @Bean
+  public GatewayRouter gatewayRouter(
+      ToolRegistry toolRegistry,
+      PolicyEngine policyEngine,
+      ObservationRegistry observationRegistry,
+      AuditLogger auditLogger) {
+    return new GatewayRouter(toolRegistry, policyEngine, observationRegistry, auditLogger);
   }
 
   /**

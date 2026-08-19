@@ -2,6 +2,15 @@ spring:
   application:
     name: mcp-gateway-sample
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: always
+
 # mcp:
 #   gateway:
 #     mcp-endpoint: /mcp
@@ -9,5 +18,4 @@ spring:
 #       - id: filesystem
 #         endpoint: http://localhost:8081/mcp
 #
-# Auth/policy, observability and rate-limiting configuration land here in later phases
-# (see project README).
+# Auth/policy and rate-limiting configuration land here in later phases (see project README).

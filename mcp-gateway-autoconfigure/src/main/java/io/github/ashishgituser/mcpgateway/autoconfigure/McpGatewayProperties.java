@@ -12,7 +12,8 @@ public record McpGatewayProperties(
     @DefaultValue("true") boolean enabled,
     @DefaultValue("/mcp") String mcpEndpoint,
     List<Server> servers,
-    Policy policy) {
+    Policy policy,
+    Audit audit) {
 
   public McpGatewayProperties {
     if (servers == null) {
@@ -20,6 +21,9 @@ public record McpGatewayProperties(
     }
     if (policy == null) {
       policy = new Policy(false, PolicyEffect.DENY, List.of());
+    }
+    if (audit == null) {
+      audit = new Audit(true);
     }
   }
 
@@ -57,4 +61,11 @@ public record McpGatewayProperties(
       }
     }
   }
+
+  /**
+   * Structured audit logging of every tool call decision. On by default since it only writes a log
+   * line (via {@code Slf4jAuditLogger}) rather than changing behaviour — disable it if the volume
+   * isn't wanted.
+   */
+  public record Audit(@DefaultValue("true") boolean enabled) {}
 }
