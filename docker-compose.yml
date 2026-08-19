@@ -1,0 +1,54 @@
+# Quickstart: one gateway in front of two MCP servers, with policy and quotas switched on.
+#
+#   docker compose up --build
+#   # then point any MCP client at http://localhost:8080/mcp
+#
+# What to look for once it is running:
+#   - tools/list returns github__searchCode, github__createPullRequest and database__query, but
+#     NOT database__delete. The policy denies it, so it is never advertised in the first place.
+#   - calling database__delete is refused by the gateway and never reaches the database server.
+#   - http://localhost:8080/actuator/health reports each upstream separately.
+#
+# The gateway reads deploy/compose/gateway.yml; edit that file to change the policy and restart.
+
+services:
+  github-mcp:
+    build:
+      context: .
+      args:
+        MODULE: mcp-gateway-demo-upstream
+    environment:
+      DEMO_UPSTREAM_NAME: github
+      DEMO_UPSTREAM_TOOLS_0_NAME: searchCode
+      DEMO_UPSTREAM_TOOLS_0_DESCRIPTION: Search code across the organisation
+      DEMO_UPSTREAM_TOOLS_0_RESULT: '{"matches":3,"repo":"platform/api"}'
+      DEMO_UPSTREAM_TOOLS_1_NAME: createPullRequest
+      DEMO_UPSTREAM_TOOLS_1_DESCRIPTION: Open a pull request
+      DEMO_UPSTREAM_TOOLS_1_RESULT: '{"number":42,"state":"open"}'
+
+  database-mcp:
+    build:
+      context: .
+      args:
+        MODULE: mcp-gateway-demo-upstream
+    environment:
+      DEMO_UPSTREAM_NAME: database
+      DEMO_UPSTREAM_TOOLS_0_NAME: query
+      DEMO_UPSTREAM_TOOLS_0_DESCRIPTION: Run a read-only SQL query
+      DEMO_UPSTREAM_TOOLS_0_RESULT: '{"rows":[{"id":1,"name":"acme"}]}'
+      DEMO_UPSTREAM_TOOLS_1_NAME: delete
+      DEMO_UPSTREAM_TOOLS_1_DESCRIPTION: Delete rows
+      DEMO_UPSTREAM_TOOLS_1_RESULT: '{"deleted":0}'
+
+  gateway:
+    build:
+      context: .
+      args:
+        MODULE: mcp-gateway-server
+    ports:
+      - "8080:8080"
+    depends_on:
+      - github-mcp
+      - database-mcp
+    volumes:
+      - ./deploy/compose/gateway.yml:/app/config/application.yml:ro

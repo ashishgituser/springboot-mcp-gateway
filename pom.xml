@@ -49,6 +49,8 @@
     <module>mcp-gateway-autoconfigure</module>
     <module>mcp-gateway-spring-boot-starter</module>
     <module>mcp-gateway-sample</module>
+    <module>mcp-gateway-server</module>
+    <module>mcp-gateway-demo-upstream</module>
   </modules>
 
   <properties>

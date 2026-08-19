@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: mcp-gateway
+  lifecycle:
+    # Let in-flight tool calls finish when the container gets SIGTERM.
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    # The audit log is its own logger so it can be routed to a separate sink or file appender
+    # without dragging the rest of the application log along with it.
+    io.github.ashishgituser.mcpgateway.audit: INFO
+
+mcp:
+  gateway:
+    enabled: true
+    mcp-endpoint: /mcp
+    # Upstreams, policy and quotas come from the environment. Every property below binds from an
+    # env var too, e.g. MCP_GATEWAY_SERVERS_0_ID / MCP_GATEWAY_POLICY_ENABLED, so the image needs
+    # no baked-in configuration and no config file mount for simple deployments.
+    servers: []

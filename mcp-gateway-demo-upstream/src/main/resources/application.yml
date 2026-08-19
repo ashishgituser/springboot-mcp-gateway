@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: mcp-demo-upstream
+
+server:
+  port: 8080
+  shutdown: graceful
+
+demo:
+  upstream:
+    name: demo-upstream
+    tools:
+      - name: ping
+        description: Replies with pong
+        result: pong

@@ -1,0 +1,28 @@
+# Gateway configuration for the docker compose quickstart. Mounted into the container at
+# /app/config/application.yml, which Spring Boot picks up on top of the image defaults.
+mcp:
+  gateway:
+    mcp-endpoint: /mcp
+    servers:
+      - id: github
+        endpoint: http://github-mcp:8080/mcp
+      - id: database
+        endpoint: http://database-mcp:8080/mcp
+
+    # Deny by default. Note what this does to discovery: database__delete is never advertised in
+    # tools/list at all, so an agent cannot even learn that it exists.
+    policy:
+      enabled: true
+      default-effect: DENY
+      rules:
+        - effect: ALLOW
+          tools: ["github__*"]
+        - effect: ALLOW
+          tools: ["database__query"]
+
+    rate-limit:
+      enabled: true
+      capacity: 60
+      refill-tokens: 60
+      refill-period: 1m
+      scope: PRINCIPAL_AND_TOOL
