@@ -1,0 +1,11 @@
+* text=auto
+
+# Java sources are formatted with CRLF by spotless; keep git from fighting it.
+*.java text eol=crlf
+
+# These are read by Linux tooling (Docker build, container shells, CI) - CRLF breaks
+# line continuations and shebangs, so pin them to LF regardless of platform.
+Dockerfile text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
