@@ -1,14 +1,14 @@
 # Spring Boot MCP Gateway
 
 [![CI](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml)
-[![Release](https://jitpack.io/v/ashishgituser/springboot-mcp-gateway.svg)](https://jitpack.io/#ashishgituser/springboot-mcp-gateway)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.ashishgituser/mcp-gateway-spring-boot-starter.svg)](https://central.sonatype.com/artifact/io.github.ashishgituser/mcp-gateway-spring-boot-starter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
 A Spring Boot starter that puts a single gateway in front of multiple [MCP](https://modelcontextprotocol.io) (Model Context Protocol) servers: one endpoint for clients, with routing, auth/policy enforcement, observability and rate limiting handled centrally instead of in every downstream server.
 
-> **Status:** early development. All four MVP features — routing/aggregation, auth/policy enforcement, observability and rate limiting — are implemented and covered by unit, architecture and end-to-end integration tests (see [Testing](#testing)). Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
+> **Status:** all four MVP features — routing/aggregation, auth/policy enforcement, observability and rate limiting — are implemented, tested (unit, architecture and end-to-end integration tests, see [Testing](#testing)), and published on Maven Central. See [CHANGELOG.md](CHANGELOG.md) for what's changed.
 
 ## Architecture
 
@@ -36,7 +36,17 @@ Teams running several internal MCP servers end up duplicating auth, logging and 
 
 ## Getting it
 
-Not yet on Maven Central (see [Roadmap](#roadmap)) — until then, the tagged releases are built on demand by [JitPack](https://jitpack.io/#ashishgituser/springboot-mcp-gateway):
+On Maven Central:
+
+```xml
+<dependency>
+  <groupId>io.github.ashishgituser</groupId>
+  <artifactId>mcp-gateway-spring-boot-starter</artifactId>
+  <version>0.1.1</version>
+</dependency>
+```
+
+For an unreleased commit, [JitPack](https://jitpack.io/#ashishgituser/springboot-mcp-gateway) builds any tag or commit hash on demand:
 
 ```xml
 <repositories>
@@ -49,11 +59,11 @@ Not yet on Maven Central (see [Roadmap](#roadmap)) — until then, the tagged re
 <dependency>
   <groupId>com.github.ashishgituser.springboot-mcp-gateway</groupId>
   <artifactId>mcp-gateway-spring-boot-starter</artifactId>
-  <version>v0.1.0</version>
+  <version>main-SNAPSHOT</version>
 </dependency>
 ```
 
-Swap `v0.1.0` for any tag, or a commit hash for an untagged build. See [Releases](https://github.com/ashishgituser/springboot-mcp-gateway/releases) for what's in each version.
+See [Releases](https://github.com/ashishgituser/springboot-mcp-gateway/releases) for what's in each version.
 
 ## Building locally
 
@@ -153,7 +163,7 @@ mcp:
 - [x] Observability: metrics, health, audit logging
 - [x] Rate limiting / quota management (built on [Bucket4j](https://bucket4j.com))
 - [x] End-to-end integration tests and architecture tests (ArchUnit)
-- [ ] Maven Central release
+- [x] Maven Central release
 
 ## Contributing
 
