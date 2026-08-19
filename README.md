@@ -1,169 +1,237 @@
 # Spring Boot MCP Gateway
 
+**Enterprise MCP gateway for Spring Boot.** Put one governed endpoint in front of every MCP server your agents use — with authentication, tool-level authorization, quotas, audit and metrics enforced centrally instead of reimplemented in each server.
+
 [![CI](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml)
+[![Docker](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/docker.yml/badge.svg)](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/docker.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.ashishgituser/mcp-gateway-spring-boot-starter.svg)](https://central.sonatype.com/artifact/io.github.ashishgituser/mcp-gateway-spring-boot-starter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
-A Spring Boot starter that puts a single gateway in front of multiple [MCP](https://modelcontextprotocol.io) (Model Context Protocol) servers: one endpoint for clients, with routing, auth/policy enforcement, observability and rate limiting handled centrally instead of in every downstream server.
-
-> **Status:** all four MVP features — routing/aggregation, auth/policy enforcement, observability and rate limiting — are implemented, tested (unit, architecture and end-to-end integration tests, see [Testing](#testing)), and published on Maven Central. See [CHANGELOG.md](CHANGELOG.md) for what's changed.
-
-## Architecture
-
 <img src="docs/architecture.svg" alt="Architecture: clients call one MCP endpoint; the gateway authenticates, throttles, routes and fans out to upstream MCP servers" width="100%">
 
-Clients connect to a single MCP endpoint. The gateway authenticates the caller (delegated to `mcp-security`), checks the call against policy, applies quota, resolves the namespaced tool name to the upstream that owns it, and forwards the call over an MCP client connection. Tool catalogs from every upstream are merged into one registry at startup, so clients see a single list of tools. Every call is metered, health-checked and audit-logged along the way — see [Observability](#observability) below.
+## The problem
 
-## Why
+An organisation that adopts MCP ends up with MCP servers everywhere — one for the issue tracker, one for the warehouse, one per internal platform team. Every one of them then has to answer the same questions independently:
 
-Teams running several internal MCP servers end up duplicating auth, logging and throttling in each one. This gateway centralizes that: agents/clients talk to one MCP endpoint, and the gateway aggregates upstream tools, enforces who can call what, and gives you metrics and audit logs for every call.
+- Who is calling, and are they allowed to call *this* tool?
+- How many calls per minute is that agent entitled to?
+- What did it actually do, and can we prove it six months from now?
 
-## Modules
+Answering those N times is how you get N different answers. Put the gateway at the boundary and you answer them once.
 
-| Module | Purpose |
+```
+     Claude / Cursor / your agent
+                 │
+                 │  one MCP endpoint
+                 ▼
+      ┌──────────────────────┐
+      │      MCP Gateway     │  identity → authorization → quota
+      │                      │  → routing → audit + metrics
+      └──────────┬───────────┘
+        ┌────────┼────────┐
+        ▼        ▼        ▼
+      GitHub   Database  Internal
+       MCP       MCP       MCP
+```
+
+## What makes it different
+
+**Authorization-aware discovery.** Most gateways deny a call at execution time but still hand every caller the full tool catalog — which leaks the name, description and argument schema of every tool behind the gateway. Here `tools/list` runs through the same policy engine as `tools/call`, so a caller is only ever shown tools it could actually invoke. An analyst and an admin connecting to the same endpoint see different catalogs. ([how it is proved](#testing))
+
+**Spring-native.** Not a sidecar, not another runtime to operate. It is a Spring Boot starter that binds `mcp.gateway.*` and integrates with the Spring Security context you already have, so roles come from your existing identity provider. If you would rather run it as its own service, the same thing ships as a container image.
+
+**Survives its upstreams.** Sessions open lazily and are guarded by a circuit breaker, so one unreachable MCP server does not fail the gateway's startup or cost every caller a request timeout. Catalogs refresh on a schedule, so a server deployed after the gateway joins by itself.
+
+## Quickstart
+
+Needs nothing but Docker. Brings up a gateway in front of two MCP servers with deny-by-default policy and quotas on:
+
+```bash
+git clone https://github.com/ashishgituser/springboot-mcp-gateway
+cd springboot-mcp-gateway
+docker compose up --build
+```
+
+Point any MCP client at `http://localhost:8080/mcp`. What you should see:
+
+| | |
 |---|---|
-| `mcp-gateway-core` | Domain logic — routing, policy engine, rate-limit SPI, audit model. No Spring Boot dependency. |
-| `mcp-gateway-autoconfigure` | `@AutoConfiguration` classes and `@ConfigurationProperties` binding `mcp.gateway.*`. |
-| `mcp-gateway-spring-boot-starter` | The dependency you add to your app — pulls in autoconfigure plus required transitive deps. |
-| `mcp-gateway-sample` | Runnable Spring Boot app demonstrating usage. |
+| `tools/list` | returns `github__searchCode`, `github__createPullRequest`, `database__query` — and **not** `database__delete`, which the policy denies |
+| calling `database__delete` | refused by the gateway; the database server never sees it |
+| `/actuator/health` | reports `github` and `database` as separate upstreams |
+| gateway logs | one structured JSON audit line per call, with the decision and the reason |
 
-## Requirements
+The policy lives in [deploy/compose/gateway.yml](deploy/compose/gateway.yml) — edit it and restart to watch the catalog change.
 
-- Java 17+
-- Spring Boot 4.1.x
-
-## Getting it
-
-On Maven Central:
+## Adding it to your application
 
 ```xml
 <dependency>
   <groupId>io.github.ashishgituser</groupId>
   <artifactId>mcp-gateway-spring-boot-starter</artifactId>
-  <version>0.1.1</version>
+  <version>0.2.0</version>
 </dependency>
 ```
-
-For an unreleased commit, [JitPack](https://jitpack.io/#ashishgituser/springboot-mcp-gateway) builds any tag or commit hash on demand:
-
-```xml
-<repositories>
-  <repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-  </repository>
-</repositories>
-
-<dependency>
-  <groupId>com.github.ashishgituser.springboot-mcp-gateway</groupId>
-  <artifactId>mcp-gateway-spring-boot-starter</artifactId>
-  <version>main-SNAPSHOT</version>
-</dependency>
-```
-
-See [Releases](https://github.com/ashishgituser/springboot-mcp-gateway/releases) for what's in each version.
-
-## Building locally
-
-```bash
-mvn -B verify
-```
-
-## Configuration
 
 ```yaml
 mcp:
   gateway:
-    enabled: true       # default true; set false to disable the gateway entirely
-    mcp-endpoint: /mcp  # where the gateway exposes its own MCP endpoint
     servers:
-      - id: filesystem
-        endpoint: http://localhost:8081/mcp
-        request-timeout: 10s
+      - id: github
+        endpoint: http://github-mcp:8080/mcp
       - id: database
-        endpoint: http://localhost:8082/mcp
+        endpoint: http://database-mcp:8080/mcp
 ```
 
-Each upstream server's tools are exposed under a namespaced name, `<serverId>__<toolName>` (e.g. `filesystem__readFile`), so tools from different servers never collide.
+That is a working gateway: both servers' tools are merged into one catalog, namespaced `<serverId>__<toolName>` so names never collide, and served on `/mcp`. Everything below is optional hardening on top.
 
-### Auth & policy
+For an unreleased commit, [JitPack](https://jitpack.io/#ashishgituser/springboot-mcp-gateway) builds any tag or commit on demand (`com.github.ashishgituser.springboot-mcp-gateway:mcp-gateway-spring-boot-starter:main-SNAPSHOT`).
 
-Authentication is delegated entirely to [mcp-security](https://github.com/spring-ai-community/mcp-security) — add `org.springaicommunity:mcp-server-security-spring-boot` and configure it per its own docs (OAuth2 resource server or API keys). The gateway adds authorization on top: an allow/deny policy engine that decides whether an authenticated (or anonymous) caller may invoke a given tool.
+## Running it as a service
+
+Container images are published to GHCR for every push to `main` and every tag:
+
+```bash
+docker run -p 8080:8080 \
+  -v ./gateway.yml:/app/config/application.yml:ro \
+  ghcr.io/ashishgituser/mcp-gateway-server:latest
+```
+
+Every property also binds from the environment, so simple deployments need no config file at all. The image runs as a non-root user, shuts down gracefully, and exposes Actuator liveness/readiness probes.
+
+## Configuration
+
+### Authorization
+
+Authentication is delegated to [mcp-security](https://github.com/spring-ai-community/mcp-security) — add `org.springaicommunity:mcp-server-security-spring-boot` and configure OAuth2 or API keys per its own docs. The gateway adds authorization on top.
 
 ```yaml
 mcp:
   gateway:
     policy:
-      enabled: true      # default false — until enabled, every call is forwarded as before
-      default-effect: DENY  # applied when no rule below matches; ALLOW is also valid
+      enabled: true          # default false - until then every call is forwarded
+      default-effect: DENY   # what happens when no rule matches
+      filter-tool-list: true # default true - hide denied tools from tools/list
       rules:
-        # Rules are evaluated top to bottom; the first match wins, so put narrow
-        # exceptions above the broad rule they override.
+        # First match wins, so narrow exceptions go above the broad rule they override.
         - effect: DENY
-          tools: ["filesystem__delete*"]
+          tools: ["database__delete*"]
         - effect: ALLOW
           roles: ["admin"]
           tools: ["*"]
         - effect: ALLOW
           principals: ["ci-bot"]
-          tools: ["database__query"]
+          tools: ["github__createPullRequest"]
 ```
 
-`principals`, `roles` and `tools` are all optional per rule — an omitted constraint matches anything, and `tools` entries are globs over the *namespaced* tool name (`*` and `?` wildcards). Roles only populate when Spring Security authenticates the caller (e.g. via `mcp-security`); without it, callers resolve to the servlet principal's name with no roles, so role-based rules never match.
+`principals`, `roles` and `tools` are each optional — an omitted constraint matches anything. `tools` entries are globs (`*`, `?`) over the namespaced name. Roles populate when Spring Security authenticates the caller; without it, callers resolve to the servlet principal with no roles, so role rules never match.
 
-### Observability
+Set `filter-tool-list: false` if you publish your tool inventory elsewhere and want the full catalog visible with enforcement only at call time.
 
-Every tool call is recorded three ways, none of which require any configuration to start working:
-
-- **Metrics** — a `mcp.gateway.tool.call` timer, tagged with `tool.name` and `outcome` (`allowed`, `denied`, `rate_limited`, `not_found`, `error`), recorded through Micrometer's `ObservationRegistry`. Add `spring-boot-starter-actuator` and it's exported over `/actuator/metrics` automatically; add a `micrometer-tracing` bridge and the same observation produces spans too.
-- **Health** — an `upstreams` health indicator pings every configured upstream's MCP session and reports `UP`/`DOWN` per server under `/actuator/health` (requires `spring-boot-starter-actuator`).
-- **Audit log** — a structured JSON line per call (`principal`, `tool`, `outcome`, `durationMs`, `reason`) written via SLF4J on the `io.github.ashishgituser.mcpgateway.audit` logger, so it can be routed to its own file or log sink independently of application logs.
-
-```yaml
-mcp:
-  gateway:
-    audit:
-      enabled: true  # default true — writes a log line per call, no behaviour change
-```
-
-None of this requires Actuator: without it, calls still flow through a no-op `ObservationRegistry` and the audit log keeps writing — metrics and the health endpoint just aren't exported anywhere until you add it.
-
-### Rate limiting
-
-Off by default. Once enabled, each call consumes one token from an in-memory [Bucket4j](https://bucket4j.com) bucket; the bucket refills at a fixed rate up to a capacity. Calls over quota are rejected before reaching an upstream, the same as a policy denial.
+### Quotas
 
 ```yaml
 mcp:
   gateway:
     rate-limit:
-      enabled: true       # default false
-      capacity: 100        # max tokens a bucket can hold
-      refill-tokens: 100    # tokens added per refill-period
+      enabled: true        # default false
+      capacity: 100        # max tokens a bucket holds
+      refill-tokens: 100
       refill-period: 1m
-      scope: PRINCIPAL     # PRINCIPAL (default) | TOOL | PRINCIPAL_AND_TOOL
+      scope: PRINCIPAL     # PRINCIPAL | TOOL | PRINCIPAL_AND_TOOL
 ```
 
-`scope` decides what the quota is shared across: `PRINCIPAL` gives each caller one quota for every tool they call, `TOOL` gives each tool one shared quota across every caller, and `PRINCIPAL_AND_TOOL` tracks a separate quota per (caller, tool) pair. Bring your own `RateLimiter` bean to swap in a distributed limiter (e.g. Redis-backed) instead of the in-memory default.
+Backed by [Bucket4j](https://bucket4j.com), **in-memory** — which means quota is per gateway instance. Running more than one replica currently needs your own `RateLimiter` bean over a shared store; a Redis-backed implementation is on the roadmap.
+
+### Observability
+
+No configuration needed for any of it:
+
+- **Metrics** — `mcp.gateway.tool.call` timer tagged with `tool.name` and `outcome` (`allowed`, `denied`, `rate_limited`, `not_found`, `error`), plus `mcp.gateway.tool.list` for discovery. Recorded through Micrometer's `ObservationRegistry`, so adding `spring-boot-starter-actuator` exports them and adding a tracing bridge produces spans from the same observations.
+- **Health** — an `upstreams` indicator reporting `UP`/`DOWN` per configured server.
+- **Audit** — one structured JSON line per call on the `io.github.ashishgituser.mcpgateway.audit` logger, so it can be routed to its own sink independently of application logs.
+
+```yaml
+mcp:
+  gateway:
+    audit:
+      enabled: true
+      include-arguments: false   # default false - see below
+      redact: ["*password*", "*token*", "*secret*"]
+```
+
+Argument capture is off by default: arguments are where credentials and personal data live, and audit logs usually travel further than the gateway does. Turn it on and matching keys are masked (not dropped, so the log still shows the argument was there).
+
+### Resilience
+
+```yaml
+mcp:
+  gateway:
+    refresh-interval: 60s   # 0 to freeze the catalog at whatever startup found
+    request-timeout: 20s
+    servers:
+      - id: github
+        endpoint: http://github-mcp:8080/mcp
+        request-timeout: 10s
+```
+
+Three consecutive transport failures take an upstream out of rotation for 30 seconds; one probe then decides whether it is back. Protocol errors don't count — the server answered, so it is up.
+
+## Compatibility
+
+| | Supported | Notes |
+|---|---|---|
+| Spring Boot | 4.1.x | 3.x support is being investigated for 0.3 |
+| Java | 17, 21 | both tested in CI |
+| MCP SDK | 2.0.0 | |
+| Client → gateway transport | Streamable HTTP | SSE and stdio not yet supported |
+| Gateway → upstream transport | Streamable HTTP | |
+| MCP primitives proxied | Tools | resources and prompts are not proxied yet |
+| Rate limiting | In-memory | distributed quota needs your own `RateLimiter` bean |
+
+## Modules
+
+| Module | Purpose |
+|---|---|
+| `mcp-gateway-core` | Routing, policy, tool visibility, rate-limit SPI, audit model, upstream resilience. No Spring dependency. |
+| `mcp-gateway-autoconfigure` | `@AutoConfiguration` and `mcp.gateway.*` binding. |
+| `mcp-gateway-spring-boot-starter` | The dependency you add to your app. |
+| `mcp-gateway-server` | Standalone container-ready distribution. |
+| `mcp-gateway-sample` | Example application, and where the end-to-end tests live. |
+| `mcp-gateway-demo-upstream` | Configurable MCP server backing the quickstart. |
 
 ## Testing
 
-`mvn -B verify` runs three layers of tests, all in CI on Java 17 and 21 (see the badge above):
+`mvn -B verify` runs three layers, on Java 17 and 21 in CI:
 
-- **Unit tests** in `mcp-gateway-core` and `mcp-gateway-autoconfigure` — the router, policy engine, rate limiter and Spring wiring, mock-driven.
-- **Architecture tests** (ArchUnit) in both modules — enforce that `mcp-gateway-core` never depends on Spring or Servlet classes, that its policy/rate-limit/observability packages never depend back on the router that consumes them, and that every `@AutoConfiguration` class is wired through constructors, not field injection.
-- **An end-to-end integration test** in `mcp-gateway-sample` — boots two real MCP servers in-process as upstreams and a real MCP client against the gateway's own HTTP endpoint, over the actual streamable-HTTP transport. It asserts tool aggregation/namespacing, that a policy-denied call never reaches the upstream, and that a rate-limited call is rejected once its quota is exhausted — using upstream invocation counters as the proof, not just response shape.
+- **Unit tests** — router, policy engine, tool visibility, rate limiter, argument redaction, circuit breaker.
+- **Architecture tests** (ArchUnit) — `mcp-gateway-core` may not reference Spring or Servlet classes; its policy/rate-limit/observability packages may not depend back on the router; autoconfiguration is constructor-wired, never field-injected.
+- **End-to-end tests** — real MCP servers booted in-process, driven through the gateway's real HTTP endpoint by a real MCP client. They assert what the claims above depend on: that a denied tool is **absent from `tools/list`**, that a denied call never reaches the upstream (proved with upstream invocation counters, not response shape), that quota rejection happens before the upstream, and that a gateway boots and serves while one of its upstreams is dead, then folds it back in when it returns.
 
 ## Roadmap
 
-- [x] Multi-module project scaffolding
-- [x] Multi-server routing/aggregation
-- [x] Auth & policy enforcement (built on [mcp-security](https://github.com/spring-ai-community/mcp-security))
+- [x] Multi-server routing and tool aggregation
+- [x] Auth & policy enforcement (on [mcp-security](https://github.com/spring-ai-community/mcp-security))
 - [x] Observability: metrics, health, audit logging
-- [x] Rate limiting / quota management (built on [Bucket4j](https://bucket4j.com))
-- [x] End-to-end integration tests and architecture tests (ArchUnit)
-- [x] Maven Central release
+- [x] Rate limiting (on [Bucket4j](https://bucket4j.com))
+- [x] Authorization-aware tool discovery
+- [x] Upstream circuit breaking and periodic catalog refresh
+- [x] Audit argument capture with redaction
+- [x] Container image and docker compose quickstart
+- [ ] Redis-backed distributed rate limiter
+- [ ] Proxy MCP resources and prompts, not just tools
+- [ ] Spring Boot 3.x compatibility
+- [ ] Published latency benchmarks
+- [ ] Helm chart
+
+## Documentation
+
+- [Architecture and request lifecycle](docs/architecture.md)
+- [Security model and threat coverage](docs/security.md)
+- [Releasing](docs/RELEASING.md)
+- [Changelog](CHANGELOG.md)
 
 ## Contributing
 

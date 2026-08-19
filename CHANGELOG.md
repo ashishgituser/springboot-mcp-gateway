@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-19
+
+Positions the gateway as a governance layer rather than a proxy, and makes it deployable on its own.
+
+### Added
+- **Authorization-aware tool discovery.** `tools/list` now runs through the same `PolicyEngine` as `tools/call`, so a caller is only shown tools it could actually invoke — a denied tool's name, description and argument schema are no longer disclosed to everyone who can reach the endpoint. On by default; set `mcp.gateway.policy.filter-tool-list=false` for the previous behaviour. Pluggable via a `ToolVisibility` bean.
+- **Upstream resilience.** Sessions are opened on first use instead of at startup, so an unreachable MCP server no longer fails the gateway's context. Each upstream is guarded by a `CircuitBreaker` (three consecutive transport failures open it for 30s, then one probe decides); protocol errors don't count towards it, since the server answered. Catalog refresh skips upstreams it can't reach rather than failing.
+- **Periodic catalog refresh** (`mcp.gateway.refresh-interval`, default `60s`, `0` to disable), so an upstream deployed after the gateway joins by itself and tools added or removed upstream are picked up without a restart. Connected clients get `notifications/tools/list_changed` when the published set changes.
+- **Audit argument capture with redaction.** `mcp.gateway.audit.include-arguments` (default `false`) records what the caller asked for; keys matching `mcp.gateway.audit.redact` are masked, not dropped. Composed as `AuditLogger` decorators.
+- **`mcp-gateway-server`** — a standalone, container-ready distribution for teams that want the gateway as its own deployable rather than embedded in an existing application. Graceful shutdown, liveness/readiness probes, non-root image.
+- **`mcp-gateway-demo-upstream`** and a `docker compose up --build` quickstart that stands up a gateway in front of two MCP servers with deny-by-default policy, needing nothing installed but Docker.
+- Container images for both deployables published to GHCR on `main` and on tags.
+- `docs/architecture.md` (module boundaries, request lifecycle, extension points) and `docs/security.md` (trust boundary, threat coverage, and an explicit list of what the gateway does not do).
+- `mcp.gateway.request-timeout` for the gateway's own MCP session timeout.
+
+### Changed
+- The gateway now installs its own MCP request handlers on the transport provider instead of building an SDK `McpServer` over a fixed tool list. The SDK answers `tools/list` identically for every caller with no per-request hook, which per-principal filtering requires. This also leaves room to proxy resources and prompts later.
+- `AuditEvent` gained an `arguments` component. The previous six-argument constructor still exists and passes `null`.
+- `UpstreamServer` is a class rather than a record, and exposes `listTools()`/`callTool()`/`ping()` instead of a raw `client()`, so failures can be observed by the circuit breaker. The `(id, client)` constructor is unchanged.
+- The glob matcher moved from `policy.ToolPattern` to `core.util.Glob`; `ToolPattern` delegates to it and its API is unchanged.
+- README rewritten around the problem and the enterprise positioning, with an honest compatibility matrix — including what is *not* supported (SSE and stdio transports, resources and prompts, distributed rate limiting, Spring Boot 3.x).
+
+### Removed
+- The `McpSyncServer` bean. Applications that injected it should use `GatewayRouter` or `ToolRegistry` instead.
+
+
 ## [0.1.1] - 2026-08-19
 
 First release published to Maven Central.
@@ -34,6 +60,7 @@ First feature-complete milestone: all four MVP features implemented and tested e
 - Architecture tests (ArchUnit) locking in the module boundaries: `mcp-gateway-core` can't depend on Spring or Servlet classes, its policy/rate-limit/observability packages can't depend back on the router, and `mcp-gateway-autoconfigure` beans are wired only through constructors/`@Bean` methods, never field injection.
 - An end-to-end integration test (`mcp-gateway-sample`) that boots two real MCP servers in-process as upstreams and drives the gateway over its real streamable-HTTP endpoint with a real MCP client, asserting tool aggregation/namespacing, policy denial, and rate-limit enforcement without any mocking.
 
-[Unreleased]: https://github.com/ashishgituser/springboot-mcp-gateway/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/ashishgituser/springboot-mcp-gateway/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ashishgituser/springboot-mcp-gateway/releases/tag/v0.2.0
 [0.1.1]: https://github.com/ashishgituser/springboot-mcp-gateway/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ashishgituser/springboot-mcp-gateway/releases/tag/v0.1.0
