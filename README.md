@@ -44,6 +44,8 @@ Answering those N times is how you get N different answers. Put the gateway at t
 
 **Survives its upstreams.** Sessions open lazily and are guarded by a circuit breaker, so one unreachable MCP server does not fail the gateway's startup or cost every caller a request timeout. Catalogs refresh on a schedule, so a server deployed after the gateway joins by itself.
 
+It costs about **+0.3 ms at the median** over calling the upstream directly, with policy, quotas and audit all switched on — [measured, with the harness and the caveats](docs/benchmarks.md).
+
 ## Quickstart
 
 Needs nothing but Docker. Brings up a gateway in front of two MCP servers with deny-by-default policy and quotas on:
@@ -233,13 +235,14 @@ Consecutive transport failures take an upstream out of rotation for `open-durati
 - [x] Container image and docker compose quickstart
 - [x] Redis-backed distributed rate limiter
 - [x] Proxy MCP prompts and resources, not just tools
+- [x] Published latency benchmarks
 - [ ] Spring Boot 3.x compatibility
-- [ ] Published latency benchmarks
 
 ## Documentation
 
 - [Architecture and request lifecycle](docs/architecture.md)
 - [Security model and threat coverage](docs/security.md)
+- [Benchmarks](docs/benchmarks.md)
 - [Releasing](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
 
