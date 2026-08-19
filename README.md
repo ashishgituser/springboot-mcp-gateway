@@ -1,6 +1,7 @@
 # Spring Boot MCP Gateway
 
 [![CI](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml)
+[![Release](https://jitpack.io/v/ashishgituser/springboot-mcp-gateway.svg)](https://jitpack.io/#ashishgituser/springboot-mcp-gateway)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -32,6 +33,27 @@ Teams running several internal MCP servers end up duplicating auth, logging and 
 
 - Java 17+
 - Spring Boot 4.1.x
+
+## Getting it
+
+Not yet on Maven Central (see [Roadmap](#roadmap)) — until then, the tagged releases are built on demand by [JitPack](https://jitpack.io/#ashishgituser/springboot-mcp-gateway):
+
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+
+<dependency>
+  <groupId>com.github.ashishgituser.springboot-mcp-gateway</groupId>
+  <artifactId>mcp-gateway-spring-boot-starter</artifactId>
+  <version>v0.1.0</version>
+</dependency>
+```
+
+Swap `v0.1.0` for any tag, or a commit hash for an untagged build. See [Releases](https://github.com/ashishgituser/springboot-mcp-gateway/releases) for what's in each version.
 
 ## Building locally
 

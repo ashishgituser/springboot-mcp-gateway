@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-19
+
+First feature-complete milestone: all four MVP features implemented and tested end to end. Not yet on Maven Central — see [Getting it](README.md#getting-it) for the JitPack coordinates in the meantime.
+
 ### Added
 - Multi-module Maven project scaffolding: `mcp-gateway-core`, `mcp-gateway-autoconfigure`, `mcp-gateway-spring-boot-starter`, `mcp-gateway-sample`.
 - CI workflow building and testing against Java 17 and 21.
@@ -19,3 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limiting: an opt-in `RateLimiter` SPI (`mcp.gateway.rate-limit.*`), with a [Bucket4j](https://bucket4j.com)-backed in-memory default. Calls over quota are rejected before reaching an upstream, recorded as a `rate_limited` outcome in metrics and the audit log. Quota can be scoped per caller, per tool, or per (caller, tool) pair.
 - Architecture tests (ArchUnit) locking in the module boundaries: `mcp-gateway-core` can't depend on Spring or Servlet classes, its policy/rate-limit/observability packages can't depend back on the router, and `mcp-gateway-autoconfigure` beans are wired only through constructors/`@Bean` methods, never field injection.
 - An end-to-end integration test (`mcp-gateway-sample`) that boots two real MCP servers in-process as upstreams and drives the gateway over its real streamable-HTTP endpoint with a real MCP client, asserting tool aggregation/namespacing, policy denial, and rate-limit enforcement without any mocking.
+
+[Unreleased]: https://github.com/ashishgituser/springboot-mcp-gateway/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ashishgituser/springboot-mcp-gateway/releases/tag/v0.1.0
