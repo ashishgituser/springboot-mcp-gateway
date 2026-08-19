@@ -7,14 +7,17 @@ outside this repo first, by whoever owns the `io.github.ashishgituser` namespace
 
 ## One-time setup
 
-1. **Create a Central Publisher Portal account** at [central.sonatype.com](https://central.sonatype.com) and verify the `io.github.ashishgituser` namespace. For a `io.github.*` groupId this is done by creating a public GitHub gist (under the `ashishgituser` account) containing the verification code the portal gives you — no DNS access needed.
-2. **Generate a portal user token** (Account → Generate User Token). This gives you a username/password pair — not your login credentials — used for deployment.
-3. **Generate a GPG key pair** if you don't already have one (`gpg --gen-key`), and publish the public key to a keyserver so Central can verify signatures:
+1. **Create a Central Publisher Portal account** at [central.sonatype.com](https://central.sonatype.com) — sign in with **"Sign in with GitHub"**, not email/password, since that's what makes the next step automatic.
+2. **Verify the `io.github.ashishgituser` namespace**: Namespaces → Add Namespace → `io.github.ashishgituser`. Because you're authenticated as that GitHub account, Central verifies ownership automatically, no DNS or extra proof needed. If it doesn't auto-verify, the fallback is a short-lived public gist under `ashishgituser` containing the verification code Central gives you.
+3. **Generate a portal user token** (Account → Generate User Token). This gives you a username/password pair — not your login credentials — used for deployment.
+4. **Generate a GPG key pair** if you don't already have one:
    ```bash
+   gpg --full-generate-key   # RSA, 4096 bits
+   gpg --list-secret-keys --keyid-format=long   # note the key ID
    gpg --keyserver keyserver.ubuntu.com --send-keys <KEY_ID>
    ```
-4. **Add repository secrets** (Settings → Secrets and variables → Actions) on this repo:
-   - `CENTRAL_TOKEN_USERNAME`, `CENTRAL_TOKEN_PASSWORD` — from step 2.
+5. **Add repository secrets** (Settings → Secrets and variables → Actions) on this repo:
+   - `CENTRAL_TOKEN_USERNAME`, `CENTRAL_TOKEN_PASSWORD` — from step 3.
    - `GPG_PRIVATE_KEY` — `gpg --export-secret-keys --armor <KEY_ID>`, the full ASCII-armored block.
    - `GPG_PASSPHRASE` — the key's passphrase.
 
