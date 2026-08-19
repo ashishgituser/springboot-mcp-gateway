@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-19
+
+First release published to Maven Central.
+
+### Fixed
+- `mcp-gateway-sample` (the demo app, deliberately shipped without sources/javadoc jars) was getting swept into the Maven Central upload bundle despite `maven.deploy.skip`, since `central-publishing-maven-plugin` runs as a build extension that bypasses that flag — failing validation for the whole deployment. Excluded it via the plugin's own `skipPublishing` override instead.
+
+### Added
+- The `release` workflow now takes an `auto_publish` input: leave it off to land a deployment as pending-review in the Central Portal (the default, and what every prior release profile run did), or check it to publish immediately once Central validates the upload.
+
 ## [0.1.0] - 2026-08-19
 
 First feature-complete milestone: all four MVP features implemented and tested end to end. Not yet on Maven Central — see [Getting it](README.md#getting-it) for the JitPack coordinates in the meantime.
@@ -24,5 +34,6 @@ First feature-complete milestone: all four MVP features implemented and tested e
 - Architecture tests (ArchUnit) locking in the module boundaries: `mcp-gateway-core` can't depend on Spring or Servlet classes, its policy/rate-limit/observability packages can't depend back on the router, and `mcp-gateway-autoconfigure` beans are wired only through constructors/`@Bean` methods, never field injection.
 - An end-to-end integration test (`mcp-gateway-sample`) that boots two real MCP servers in-process as upstreams and drives the gateway over its real streamable-HTTP endpoint with a real MCP client, asserting tool aggregation/namespacing, policy denial, and rate-limit enforcement without any mocking.
 
-[Unreleased]: https://github.com/ashishgituser/springboot-mcp-gateway/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ashishgituser/springboot-mcp-gateway/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ashishgituser/springboot-mcp-gateway/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ashishgituser/springboot-mcp-gateway/releases/tag/v0.1.0

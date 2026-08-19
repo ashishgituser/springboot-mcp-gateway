@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      auto_publish:
+        description: "Publish immediately once validated, with no manual review step in the Central Portal. Irreversible once live - leave unchecked to land as a pending deployment you confirm by hand instead."
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -22,7 +27,10 @@ jobs:
           gpg-passphrase: GPG_PASSPHRASE
 
       - name: Deploy to Central Publisher Portal
-        run: mvn -B -ntp -Prelease deploy
+        run: >
+          mvn -B -ntp -Prelease deploy
+          -DautoPublish=${{ inputs.auto_publish }}
+          -DwaitUntil=${{ inputs.auto_publish && 'PUBLISHED' || 'VALIDATED' }}
         env:
           CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
           CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
