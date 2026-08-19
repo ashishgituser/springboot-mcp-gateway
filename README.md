@@ -1,8 +1,13 @@
 # Spring Boot MCP Gateway
 
+[![CI](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishgituser/springboot-mcp-gateway/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
+
 A Spring Boot starter that puts a single gateway in front of multiple [MCP](https://modelcontextprotocol.io) (Model Context Protocol) servers: one endpoint for clients, with routing, auth/policy enforcement, observability and rate limiting handled centrally instead of in every downstream server.
 
-> **Status:** early development. All four MVP features — routing/aggregation, auth/policy enforcement, observability and rate limiting — are implemented. Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
+> **Status:** early development. All four MVP features — routing/aggregation, auth/policy enforcement, observability and rate limiting — are implemented and covered by unit, architecture and end-to-end integration tests (see [Testing](#testing)). Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
 
 ## Architecture
 
@@ -110,6 +115,14 @@ mcp:
 
 `scope` decides what the quota is shared across: `PRINCIPAL` gives each caller one quota for every tool they call, `TOOL` gives each tool one shared quota across every caller, and `PRINCIPAL_AND_TOOL` tracks a separate quota per (caller, tool) pair. Bring your own `RateLimiter` bean to swap in a distributed limiter (e.g. Redis-backed) instead of the in-memory default.
 
+## Testing
+
+`mvn -B verify` runs three layers of tests, all in CI on Java 17 and 21 (see the badge above):
+
+- **Unit tests** in `mcp-gateway-core` and `mcp-gateway-autoconfigure` — the router, policy engine, rate limiter and Spring wiring, mock-driven.
+- **Architecture tests** (ArchUnit) in both modules — enforce that `mcp-gateway-core` never depends on Spring or Servlet classes, that its policy/rate-limit/observability packages never depend back on the router that consumes them, and that every `@AutoConfiguration` class is wired through constructors, not field injection.
+- **An end-to-end integration test** in `mcp-gateway-sample` — boots two real MCP servers in-process as upstreams and a real MCP client against the gateway's own HTTP endpoint, over the actual streamable-HTTP transport. It asserts tool aggregation/namespacing, that a policy-denied call never reaches the upstream, and that a rate-limited call is rejected once its quota is exhausted — using upstream invocation counters as the proof, not just response shape.
+
 ## Roadmap
 
 - [x] Multi-module project scaffolding
@@ -117,6 +130,7 @@ mcp:
 - [x] Auth & policy enforcement (built on [mcp-security](https://github.com/spring-ai-community/mcp-security))
 - [x] Observability: metrics, health, audit logging
 - [x] Rate limiting / quota management (built on [Bucket4j](https://bucket4j.com))
+- [x] End-to-end integration tests and architecture tests (ArchUnit)
 - [ ] Maven Central release
 
 ## Contributing

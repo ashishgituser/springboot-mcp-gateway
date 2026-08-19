@@ -60,6 +60,7 @@
     <bucket4j.version>8.15.0</bucket4j.version>
     <mcp-security.version>0.1.14</mcp-security.version>
     <spotless.version>2.44.2</spotless.version>
+    <archunit.version>1.5.0</archunit.version>
   </properties>
 
   <dependencyManagement>
@@ -110,6 +111,12 @@
         <groupId>org.springaicommunity</groupId>
         <artifactId>mcp-server-security-spring-boot</artifactId>
         <version>${mcp-security.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.tngtech.archunit</groupId>
+        <artifactId>archunit-junit5</artifactId>
+        <version>${archunit.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
