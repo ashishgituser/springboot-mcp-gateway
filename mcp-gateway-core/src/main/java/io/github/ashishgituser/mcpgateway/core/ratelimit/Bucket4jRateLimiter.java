@@ -31,7 +31,7 @@ public class Bucket4jRateLimiter implements RateLimiter {
 
   @Override
   public RateLimitDecision checkLimit(GatewayPrincipal principal, String namespacedToolName) {
-    String key = key(principal, namespacedToolName);
+    String key = scope.key(principal, namespacedToolName);
     Bucket bucket = bucketsByKey.computeIfAbsent(key, k -> newBucket());
     ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
     if (probe.isConsumed()) {
@@ -45,13 +45,5 @@ public class Bucket4jRateLimiter implements RateLimiter {
     Bandwidth limit =
         Bandwidth.builder().capacity(capacity).refillGreedy(refillTokens, refillPeriod).build();
     return Bucket.builder().addLimit(limit).build();
-  }
-
-  private String key(GatewayPrincipal principal, String namespacedToolName) {
-    return switch (scope) {
-      case PRINCIPAL -> principal.name();
-      case TOOL -> namespacedToolName;
-      case PRINCIPAL_AND_TOOL -> principal.name() + "::" + namespacedToolName;
-    };
   }
 }

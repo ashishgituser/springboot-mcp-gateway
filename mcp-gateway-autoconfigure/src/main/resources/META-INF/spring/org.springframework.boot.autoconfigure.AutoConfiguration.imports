@@ -1,2 +1,3 @@
 io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayAutoConfiguration
 io.github.ashishgituser.mcpgateway.autoconfigure.UpstreamHealthAutoConfiguration
+io.github.ashishgituser.mcpgateway.autoconfigure.RedisRateLimiterAutoConfiguration

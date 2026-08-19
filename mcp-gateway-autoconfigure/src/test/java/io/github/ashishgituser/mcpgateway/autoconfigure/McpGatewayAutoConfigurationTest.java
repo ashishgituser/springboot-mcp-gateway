@@ -1,7 +1,9 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
+import io.github.ashishgituser.mcpgateway.autoconfigure.ratelimit.RedisRateLimiter;
 import io.github.ashishgituser.mcpgateway.core.observability.ArgumentRedactor;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditEvent;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
@@ -27,6 +29,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 class McpGatewayAutoConfigurationTest {
 
@@ -85,6 +88,35 @@ class McpGatewayAutoConfigurationTest {
                   .extracting(AuditEvent::arguments)
                   .isEqualTo(Map.of("query", "select 1", "apiKey", "***"));
             });
+  }
+
+  @Test
+  void usesTheRedisLimiterWhenTheStoreIsRedisAndATemplateIsAvailable() {
+    contextRunner
+        .withConfiguration(AutoConfigurations.of(RedisRateLimiterAutoConfiguration.class))
+        .withBean(StringRedisTemplate.class, () -> mock(StringRedisTemplate.class))
+        .withPropertyValues(
+            "mcp.gateway.rate-limit.enabled=true", "mcp.gateway.rate-limit.store=REDIS")
+        .run(
+            context ->
+                assertThat(context.getBean(RateLimiter.class))
+                    .isInstanceOf(RedisRateLimiter.class));
+  }
+
+  @Test
+  void failsLoudlyWhenRedisIsAskedForButNotAvailable() {
+    // Quietly falling back to the in-memory limiter would hand out one quota per replica, which is
+    // the opposite of what asking for REDIS means.
+    contextRunner
+        .withConfiguration(AutoConfigurations.of(RedisRateLimiterAutoConfiguration.class))
+        .withPropertyValues(
+            "mcp.gateway.rate-limit.enabled=true", "mcp.gateway.rate-limit.store=REDIS")
+        .run(
+            context ->
+                assertThat(context)
+                    .hasFailed()
+                    .getFailure()
+                    .hasMessageContaining("spring-boot-starter-data-redis"));
   }
 
   private static AuditEvent eventWith(Map<String, Object> arguments) {

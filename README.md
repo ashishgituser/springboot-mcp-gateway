@@ -141,9 +141,10 @@ mcp:
       refill-tokens: 100
       refill-period: 1m
       scope: PRINCIPAL     # PRINCIPAL | TOOL | PRINCIPAL_AND_TOOL
+      store: MEMORY        # MEMORY | REDIS
 ```
 
-Backed by [Bucket4j](https://bucket4j.com), **in-memory** — which means quota is per gateway instance. Running more than one replica currently needs your own `RateLimiter` bean over a shared store; a Redis-backed implementation is on the roadmap.
+`store: MEMORY` (the default) keeps buckets in the gateway process, which means a deployment of N replicas hands out N times the configured quota. `store: REDIS` shares them — add `spring-boot-starter-data-redis`, point `spring.data.redis.*` at your Redis, and every replica draws from the same bucket. Refill and consume run as a single Lua script so two replicas cannot both spend the last token, and elapsed time comes from Redis's clock rather than each caller's.
 
 ### Observability
 
@@ -189,7 +190,7 @@ Three consecutive transport failures take an upstream out of rotation for 30 sec
 | Client → gateway transport | Streamable HTTP | SSE and stdio not yet supported |
 | Gateway → upstream transport | Streamable HTTP | |
 | MCP primitives proxied | Tools | resources and prompts are not proxied yet |
-| Rate limiting | In-memory | distributed quota needs your own `RateLimiter` bean |
+| Rate limiting | In-memory or Redis | `mcp.gateway.rate-limit.store` |
 
 ## Modules
 
@@ -220,7 +221,7 @@ Three consecutive transport failures take an upstream out of rotation for 30 sec
 - [x] Upstream circuit breaking and periodic catalog refresh
 - [x] Audit argument capture with redaction
 - [x] Container image and docker compose quickstart
-- [ ] Redis-backed distributed rate limiter
+- [x] Redis-backed distributed rate limiter
 - [ ] Proxy MCP resources and prompts, not just tools
 - [ ] Spring Boot 3.x compatibility
 - [ ] Published latency benchmarks

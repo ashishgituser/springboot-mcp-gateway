@@ -1,6 +1,7 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayProperties.Policy.Rule;
+import io.github.ashishgituser.mcpgateway.autoconfigure.ratelimit.RateLimitStore;
 import io.github.ashishgituser.mcpgateway.core.observability.ArgumentRedactor;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
 import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
@@ -141,7 +142,10 @@ public class McpGatewayAutoConfiguration {
   /**
    * Off by default, so a gateway with no rate-limit configuration forwards every call, as before
    * this feature existed. Once enabled, buckets are created lazily per key and kept in memory for
-   * the process lifetime.
+   * the process lifetime — which means quota is per replica. Set {@code
+   * mcp.gateway.rate-limit.store=REDIS} to share it across replicas instead; that is wired by
+   * {@link RedisRateLimiterAutoConfiguration}, which runs first and only when Spring Data Redis is
+   * on the classpath.
    */
   @Bean
   @ConditionalOnMissingBean(RateLimiter.class)
@@ -149,6 +153,13 @@ public class McpGatewayAutoConfiguration {
     McpGatewayProperties.RateLimit rateLimit = properties.rateLimit();
     if (!rateLimit.enabled()) {
       return RateLimiter.unlimited();
+    }
+    if (rateLimit.store() == RateLimitStore.REDIS) {
+      // Reaching here means the Redis configuration backed off. Falling back to in-memory would
+      // silently hand out one quota per replica, which is the opposite of what was asked for.
+      throw new IllegalStateException(
+          "mcp.gateway.rate-limit.store=REDIS requires spring-boot-starter-data-redis on the "
+              + "classpath and a StringRedisTemplate bean (configure spring.data.redis.*)");
     }
     return new Bucket4jRateLimiter(
         rateLimit.capacity(),

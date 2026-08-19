@@ -80,6 +80,6 @@ Every one of these is a `@ConditionalOnMissingBean`, so defining your own bean r
 |---|---|
 | `PolicyEngine` | evaluate authorization against your own system (OPA, an internal service, a database) |
 | `ToolVisibility` | filter discovery on something other than the policy engine |
-| `RateLimiter` | share quota across replicas via Redis or another shared store |
+| `RateLimiter` | meter against something other than the bundled in-memory and Redis stores |
 | `AuditLogger` | ship audit events somewhere other than SLF4J |
 | `PrincipalResolver` | derive the caller from something other than Spring Security |

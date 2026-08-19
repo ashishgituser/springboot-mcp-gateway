@@ -1,5 +1,6 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
+import io.github.ashishgituser.mcpgateway.autoconfigure.ratelimit.RateLimitStore;
 import io.github.ashishgituser.mcpgateway.core.observability.ArgumentRedactor;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEffect;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitScope;
@@ -31,7 +32,14 @@ public record McpGatewayProperties(
       audit = new Audit(true, false, List.of());
     }
     if (rateLimit == null) {
-      rateLimit = new RateLimit(false, 100, 100, Duration.ofMinutes(1), RateLimitScope.PRINCIPAL);
+      rateLimit =
+          new RateLimit(
+              false,
+              100,
+              100,
+              Duration.ofMinutes(1),
+              RateLimitScope.PRINCIPAL,
+              RateLimitStore.MEMORY);
     }
   }
 
@@ -96,11 +104,16 @@ public record McpGatewayProperties(
    * Off by default. Once enabled, each call consumes one token from a bucket keyed by {@code
    * scope}; the bucket refills by {@code refillTokens} every {@code refillPeriod}, up to {@code
    * capacity}.
+   *
+   * <p>{@code store} decides where those buckets live. {@code MEMORY} keeps them in the gateway
+   * process, which means a deployment of N replicas hands out N times the configured quota; {@code
+   * REDIS} shares them, at the cost of a Redis round trip per call.
    */
   public record RateLimit(
       @DefaultValue("false") boolean enabled,
       @DefaultValue("100") long capacity,
       @DefaultValue("100") long refillTokens,
       @DefaultValue("1m") Duration refillPeriod,
-      @DefaultValue("PRINCIPAL") RateLimitScope scope) {}
+      @DefaultValue("PRINCIPAL") RateLimitScope scope,
+      @DefaultValue("MEMORY") RateLimitStore store) {}
 }
