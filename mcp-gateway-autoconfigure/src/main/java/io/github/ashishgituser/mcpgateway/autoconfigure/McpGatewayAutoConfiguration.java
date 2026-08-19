@@ -1,6 +1,7 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayProperties.Policy.Rule;
+import io.github.ashishgituser.mcpgateway.core.observability.ArgumentRedactor;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
 import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
@@ -118,11 +119,23 @@ public class McpGatewayAutoConfiguration {
     return ObservationRegistry.NOOP;
   }
 
-  /** Off only if explicitly disabled — unlike policy, logging every call changes nothing. */
+  /**
+   * Off only if explicitly disabled — unlike policy, logging every call changes nothing. Call
+   * arguments are dropped before they are written unless {@code
+   * mcp.gateway.audit.include-arguments} is on, in which case keys matching {@code
+   * mcp.gateway.audit.redact} are masked first.
+   */
   @Bean
   @ConditionalOnMissingBean(AuditLogger.class)
   public AuditLogger auditLogger(McpGatewayProperties properties) {
-    return properties.audit().enabled() ? new Slf4jAuditLogger() : AuditLogger.noop();
+    McpGatewayProperties.Audit audit = properties.audit();
+    if (!audit.enabled()) {
+      return AuditLogger.noop();
+    }
+    Slf4jAuditLogger delegate = new Slf4jAuditLogger();
+    return audit.includeArguments()
+        ? AuditLogger.redacting(delegate, new ArgumentRedactor(audit.redact()))
+        : AuditLogger.withoutArguments(delegate);
   }
 
   /**

@@ -1,5 +1,6 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
+import io.github.ashishgituser.mcpgateway.core.observability.ArgumentRedactor;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEffect;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitScope;
 import java.time.Duration;
@@ -27,7 +28,7 @@ public record McpGatewayProperties(
       policy = new Policy(false, PolicyEffect.DENY, List.of(), true);
     }
     if (audit == null) {
-      audit = new Audit(true);
+      audit = new Audit(true, false, List.of());
     }
     if (rateLimit == null) {
       rateLimit = new RateLimit(false, 100, 100, Duration.ofMinutes(1), RateLimitScope.PRINCIPAL);
@@ -79,7 +80,17 @@ public record McpGatewayProperties(
    * line (via {@code Slf4jAuditLogger}) rather than changing behaviour — disable it if the volume
    * isn't wanted.
    */
-  public record Audit(@DefaultValue("true") boolean enabled) {}
+  public record Audit(
+      @DefaultValue("true") boolean enabled,
+      @DefaultValue("false") boolean includeArguments,
+      List<String> redact) {
+
+    public Audit {
+      if (redact == null || redact.isEmpty()) {
+        redact = ArgumentRedactor.DEFAULT_PATTERNS;
+      }
+    }
+  }
 
   /**
    * Off by default. Once enabled, each call consumes one token from a bucket keyed by {@code

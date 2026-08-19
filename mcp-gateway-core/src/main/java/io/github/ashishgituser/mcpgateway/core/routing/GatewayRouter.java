@@ -21,6 +21,7 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /** Dispatches a namespaced tool call to the upstream server that owns it, once policy allows it. */
 public class GatewayRouter {
@@ -91,6 +92,7 @@ public class GatewayRouter {
 
   public CallToolResult callTool(CallToolRequest request, GatewayPrincipal principal) {
     String namespacedName = request.name();
+    Map<String, Object> arguments = request.arguments();
     Instant startedAt = Instant.now();
     long startNanos = System.nanoTime();
     Observation observation =
@@ -128,11 +130,19 @@ public class GatewayRouter {
       CallToolResult result = upstreamServer.callTool(forwarded);
 
       observation.lowCardinalityKeyValue("outcome", "allowed");
-      audit(startedAt, startNanos, principal, namespacedName, AuditOutcome.ALLOWED, null);
+      audit(
+          startedAt, startNanos, principal, namespacedName, arguments, AuditOutcome.ALLOWED, null);
       return result;
     } catch (PolicyDeniedException e) {
       observation.lowCardinalityKeyValue("outcome", "denied").error(e);
-      audit(startedAt, startNanos, principal, namespacedName, AuditOutcome.DENIED, e.getMessage());
+      audit(
+          startedAt,
+          startNanos,
+          principal,
+          namespacedName,
+          arguments,
+          AuditOutcome.DENIED,
+          e.getMessage());
       throw e;
     } catch (RateLimitExceededException e) {
       observation.lowCardinalityKeyValue("outcome", "rate_limited").error(e);
@@ -141,32 +151,53 @@ public class GatewayRouter {
           startNanos,
           principal,
           namespacedName,
+          arguments,
           AuditOutcome.RATE_LIMITED,
           e.getMessage());
       throw e;
     } catch (ToolNotFoundException e) {
       observation.lowCardinalityKeyValue("outcome", "not_found").error(e);
       audit(
-          startedAt, startNanos, principal, namespacedName, AuditOutcome.NOT_FOUND, e.getMessage());
+          startedAt,
+          startNanos,
+          principal,
+          namespacedName,
+          arguments,
+          AuditOutcome.NOT_FOUND,
+          e.getMessage());
       throw e;
     } catch (RuntimeException e) {
       observation.lowCardinalityKeyValue("outcome", "error").error(e);
-      audit(startedAt, startNanos, principal, namespacedName, AuditOutcome.ERROR, e.getMessage());
+      audit(
+          startedAt,
+          startNanos,
+          principal,
+          namespacedName,
+          arguments,
+          AuditOutcome.ERROR,
+          e.getMessage());
       throw e;
     } finally {
       observation.stop();
     }
   }
 
+  /**
+   * Arguments are handed to the logger on every call; whether they are kept, masked or dropped is
+   * the logger's decision (see {@link AuditLogger#withoutArguments} and {@link
+   * AuditLogger#redacting}), so the router never has to know the audit policy.
+   */
   private void audit(
       Instant startedAt,
       long startNanos,
       GatewayPrincipal principal,
       String toolName,
+      Map<String, Object> arguments,
       AuditOutcome outcome,
       String reason) {
     Duration duration = Duration.ofNanos(System.nanoTime() - startNanos);
     auditLogger.record(
-        new AuditEvent(startedAt, principal.name(), toolName, outcome, duration, reason));
+        new AuditEvent(
+            startedAt, principal.name(), toolName, outcome, duration, reason, arguments));
   }
 }

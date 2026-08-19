@@ -2,7 +2,10 @@ package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.ashishgituser.mcpgateway.core.observability.ArgumentRedactor;
+import io.github.ashishgituser.mcpgateway.core.observability.AuditEvent;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
+import io.github.ashishgituser.mcpgateway.core.observability.AuditOutcome;
 import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.policy.ToolVisibility;
@@ -14,6 +17,11 @@ import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpStreamableServerSession;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.health.contributor.HealthIndicator;
@@ -50,10 +58,44 @@ class McpGatewayAutoConfigurationTest {
   }
 
   @Test
-  void auditLoggerIsSlf4jByDefault() {
+  void auditLoggerDropsCallArgumentsByDefault() {
     contextRunner.run(
-        context ->
-            assertThat(context.getBean(AuditLogger.class)).isInstanceOf(Slf4jAuditLogger.class));
+        context -> {
+          List<AuditEvent> recorded = new ArrayList<>();
+          AuditLogger.withoutArguments(recorded::add)
+              .record(eventWith(Map.of("password", "hunter2")));
+
+          assertThat(recorded).singleElement().extracting(AuditEvent::arguments).isNull();
+          assertThat(context.getBean(AuditLogger.class)).isNotNull();
+        });
+  }
+
+  @Test
+  void auditLoggerMasksSensitiveArgumentsWhenCaptureIsEnabled() {
+    contextRunner
+        .withPropertyValues("mcp.gateway.audit.include-arguments=true")
+        .run(
+            context -> {
+              List<AuditEvent> recorded = new ArrayList<>();
+              AuditLogger.redacting(recorded::add, ArgumentRedactor.withDefaults())
+                  .record(eventWith(Map.of("query", "select 1", "apiKey", "sk-live-1")));
+
+              assertThat(recorded)
+                  .singleElement()
+                  .extracting(AuditEvent::arguments)
+                  .isEqualTo(Map.of("query", "select 1", "apiKey", "***"));
+            });
+  }
+
+  private static AuditEvent eventWith(Map<String, Object> arguments) {
+    return new AuditEvent(
+        Instant.EPOCH,
+        "alice",
+        "database__query",
+        AuditOutcome.ALLOWED,
+        Duration.ZERO,
+        null,
+        arguments);
   }
 
   @Test
