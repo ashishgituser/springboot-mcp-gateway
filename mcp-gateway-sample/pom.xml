@@ -23,6 +23,30 @@
     <gpg.skip>true</gpg.skip>
   </properties>
 
+  <profiles>
+    <profile>
+      <!--
+        This module is a demo app, never published to Maven Central. maven.deploy.skip (set
+        above) stops the plain "install/deploy" goals, but central-publishing-maven-plugin
+        operates as a build extension that bypasses that flag - it needs its own skipPublishing
+        override, or it bundles this module's jar (deliberately missing sources/javadoc, see
+        above) into the upload and Central rejects the whole deployment for it.
+      -->
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <configuration>
+              <skipPublishing>true</skipPublishing>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <dependencies>
     <dependency>
       <groupId>io.github.ashishgituser</groupId>
