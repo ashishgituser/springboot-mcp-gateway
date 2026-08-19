@@ -3,11 +3,13 @@ package io.github.ashishgituser.mcpgateway.autoconfigure;
 import io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayProperties.Policy.Rule;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
 import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
-import io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyRule;
 import io.github.ashishgituser.mcpgateway.core.policy.RuleBasedPolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.policy.ToolPattern;
+import io.github.ashishgituser.mcpgateway.core.policy.ToolVisibility;
+import io.github.ashishgituser.mcpgateway.core.protocol.GatewayInitRequestHandler;
+import io.github.ashishgituser.mcpgateway.core.protocol.GatewayServerHandlers;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.Bucket4jRateLimiter;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
@@ -16,12 +18,13 @@ import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamClientFactory;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServer;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServerDefinition;
 import io.micrometer.observation.ObservationRegistry;
-import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
-import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
+import io.modelcontextprotocol.spec.DefaultMcpStreamableServerSessionFactory;
+import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpStreamableServerSession;
 import jakarta.servlet.Servlet;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -30,6 +33,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.DependsOn;
+import reactor.core.publisher.Mono;
 
 @AutoConfiguration
 @ConditionalOnClass(Servlet.class)
@@ -40,6 +44,8 @@ import org.springframework.context.annotation.DependsOn;
     matchIfMissing = true)
 @EnableConfigurationProperties(McpGatewayProperties.class)
 public class McpGatewayAutoConfiguration {
+
+  private static final String SERVER_NAME = "mcp-gateway";
 
   @Bean
   public UpstreamClientFactory upstreamClientFactory() {
@@ -88,6 +94,20 @@ public class McpGatewayAutoConfiguration {
   }
 
   /**
+   * Discovery is governed by the same engine as execution by default, so {@code tools/list} never
+   * advertises a tool the caller would be denied on. Set {@code
+   * mcp.gateway.policy.filter-tool-list=false} to publish the whole catalog and enforce only at
+   * call time.
+   */
+  @Bean
+  @ConditionalOnMissingBean(ToolVisibility.class)
+  public ToolVisibility toolVisibility(McpGatewayProperties properties, PolicyEngine policyEngine) {
+    return properties.policy().filterToolList()
+        ? ToolVisibility.governedBy(policyEngine)
+        : ToolVisibility.unrestricted();
+  }
+
+  /**
    * Backs off to a no-op registry when Micrometer's observation handlers aren't wired up (i.e.
    * Actuator isn't on the classpath), so tool calls are still observed for free the moment it is.
    */
@@ -129,9 +149,10 @@ public class McpGatewayAutoConfiguration {
       PolicyEngine policyEngine,
       RateLimiter rateLimiter,
       ObservationRegistry observationRegistry,
-      AuditLogger auditLogger) {
+      AuditLogger auditLogger,
+      ToolVisibility toolVisibility) {
     return new GatewayRouter(
-        toolRegistry, policyEngine, rateLimiter, observationRegistry, auditLogger);
+        toolRegistry, policyEngine, rateLimiter, observationRegistry, auditLogger, toolVisibility);
   }
 
   /**
@@ -169,40 +190,52 @@ public class McpGatewayAutoConfiguration {
   }
 
   @Bean
-  public McpSyncServer mcpSyncServer(
+  public GatewayServerHandlers gatewayServerHandlers(GatewayRouter gatewayRouter) {
+    return new GatewayServerHandlers(gatewayRouter);
+  }
+
+  /**
+   * Wires the gateway's own request handlers into the transport instead of building an {@code
+   * McpServer} over a fixed tool list. The SDK server answers {@code tools/list} with the same list
+   * for every caller, which a gateway cannot do: its catalog is assembled from several upstreams
+   * and filtered per principal. Owning the session factory is what makes that possible.
+   */
+  @Bean
+  public McpStreamableServerSession.Factory gatewaySessionFactory(
       HttpServletStreamableServerTransportProvider transportProvider,
-      ToolRegistry toolRegistry,
-      GatewayRouter gatewayRouter) {
-    List<SyncToolSpecification> toolSpecifications =
-        toolRegistry.allTools().stream()
-            .map(
-                tool ->
-                    SyncToolSpecification.builder()
-                        .tool(tool)
-                        .callHandler(
-                            (exchange, request) -> {
-                              Object contextPrincipal =
-                                  exchange.transportContext().get(GatewayPrincipal.CONTEXT_KEY);
-                              GatewayPrincipal principal =
-                                  contextPrincipal instanceof GatewayPrincipal resolved
-                                      ? resolved
-                                      : GatewayPrincipal.ANONYMOUS;
-                              return gatewayRouter.callTool(request, principal);
-                            })
-                        .build())
-            .toList();
-    return McpServer.sync(transportProvider)
-        .serverInfo("mcp-gateway", "0.1.0")
-        .tools(toolSpecifications)
-        .build();
+      GatewayServerHandlers handlers,
+      McpGatewayProperties properties) {
+    McpSchema.ServerCapabilities capabilities =
+        McpSchema.ServerCapabilities.builder().tools(true).build();
+    GatewayInitRequestHandler initRequestHandler =
+        new GatewayInitRequestHandler(
+            transportProvider.protocolVersions(),
+            new McpSchema.Implementation(SERVER_NAME, gatewayVersion()),
+            capabilities,
+            null);
+    DefaultMcpStreamableServerSessionFactory sessionFactory =
+        new DefaultMcpStreamableServerSessionFactory(
+            properties.requestTimeout(),
+            initRequestHandler,
+            handlers.requestHandlers(),
+            handlers.notificationHandlers(),
+            sessionId -> Mono.empty());
+    transportProvider.setSessionFactory(sessionFactory);
+    return sessionFactory;
   }
 
   @Bean
-  @DependsOn("mcpSyncServer")
+  @DependsOn("gatewaySessionFactory")
   public ServletRegistrationBean<HttpServletStreamableServerTransportProvider>
       mcpServletRegistration(
           HttpServletStreamableServerTransportProvider transportProvider,
           McpGatewayProperties properties) {
     return new ServletRegistrationBean<>(transportProvider, properties.mcpEndpoint());
+  }
+
+  private static String gatewayVersion() {
+    return Optional.ofNullable(
+            McpGatewayAutoConfiguration.class.getPackage().getImplementationVersion())
+        .orElse("unknown");
   }
 }

@@ -121,8 +121,16 @@ class GatewayIntegrationTest {
   @Test
   void aggregatesToolsFromBothUpstreamsUnderNamespacedNames() {
     List<String> toolNames = client.listTools().tools().stream().map(Tool::name).toList();
-    assertThat(toolNames)
-        .containsExactlyInAnyOrder("alpha__ping", "alpha__limited", "beta__echo", "beta__secret");
+    assertThat(toolNames).contains("alpha__ping", "alpha__limited", "beta__echo");
+  }
+
+  @Test
+  void deniedToolsAreHiddenFromTheCatalogNotOnlyBlockedOnCall() {
+    List<String> toolNames = client.listTools().tools().stream().map(Tool::name).toList();
+
+    // beta__secret exists upstream and is aggregated, but the policy denies it - so the caller is
+    // never told it is there. Discovery and execution are governed by the same rules.
+    assertThat(toolNames).doesNotContain("beta__secret");
   }
 
   @Test

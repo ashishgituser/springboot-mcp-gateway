@@ -7,6 +7,7 @@ import io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyDecision;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyDeniedException;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
+import io.github.ashishgituser.mcpgateway.core.policy.ToolVisibility;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitDecision;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitExceededException;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
@@ -16,19 +17,23 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import io.modelcontextprotocol.spec.McpSchema.Tool;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 /** Dispatches a namespaced tool call to the upstream server that owns it, once policy allows it. */
 public class GatewayRouter {
 
-  private static final String OBSERVATION_NAME = "mcp.gateway.tool.call";
+  private static final String CALL_OBSERVATION_NAME = "mcp.gateway.tool.call";
+  private static final String LIST_OBSERVATION_NAME = "mcp.gateway.tool.list";
 
   private final ToolRegistry toolRegistry;
   private final PolicyEngine policyEngine;
   private final RateLimiter rateLimiter;
   private final ObservationRegistry observationRegistry;
   private final AuditLogger auditLogger;
+  private final ToolVisibility toolVisibility;
 
   public GatewayRouter(ToolRegistry toolRegistry, PolicyEngine policyEngine) {
     this(
@@ -45,11 +50,43 @@ public class GatewayRouter {
       RateLimiter rateLimiter,
       ObservationRegistry observationRegistry,
       AuditLogger auditLogger) {
+    this(
+        toolRegistry,
+        policyEngine,
+        rateLimiter,
+        observationRegistry,
+        auditLogger,
+        ToolVisibility.unrestricted());
+  }
+
+  public GatewayRouter(
+      ToolRegistry toolRegistry,
+      PolicyEngine policyEngine,
+      RateLimiter rateLimiter,
+      ObservationRegistry observationRegistry,
+      AuditLogger auditLogger,
+      ToolVisibility toolVisibility) {
     this.toolRegistry = toolRegistry;
     this.policyEngine = policyEngine;
     this.rateLimiter = rateLimiter;
     this.observationRegistry = observationRegistry;
     this.auditLogger = auditLogger;
+    this.toolVisibility = toolVisibility;
+  }
+
+  /**
+   * The slice of the aggregated catalog this caller is allowed to discover. Every tool it returns
+   * is one the caller could also invoke, so a client is never shown a tool it would only ever be
+   * denied on.
+   */
+  public List<Tool> listTools(GatewayPrincipal principal) {
+    List<Tool> allTools = toolRegistry.allTools();
+    List<Tool> visible = toolVisibility.visibleTo(principal, allTools);
+    Observation.createNotStarted(LIST_OBSERVATION_NAME, observationRegistry)
+        .highCardinalityKeyValue("principal.name", principal.name())
+        .lowCardinalityKeyValue("filtered", Boolean.toString(visible.size() < allTools.size()))
+        .observe(() -> {});
+    return visible;
   }
 
   public CallToolResult callTool(CallToolRequest request, GatewayPrincipal principal) {
@@ -57,7 +94,7 @@ public class GatewayRouter {
     Instant startedAt = Instant.now();
     long startNanos = System.nanoTime();
     Observation observation =
-        Observation.createNotStarted(OBSERVATION_NAME, observationRegistry)
+        Observation.createNotStarted(CALL_OBSERVATION_NAME, observationRegistry)
             .lowCardinalityKeyValue("tool.name", namespacedName)
             .highCardinalityKeyValue("principal.name", principal.name())
             .start();

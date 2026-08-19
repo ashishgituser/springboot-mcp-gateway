@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record McpGatewayProperties(
     @DefaultValue("true") boolean enabled,
     @DefaultValue("/mcp") String mcpEndpoint,
+    @DefaultValue("20s") Duration requestTimeout,
     List<Server> servers,
     Policy policy,
     Audit audit,
@@ -22,7 +23,7 @@ public record McpGatewayProperties(
       servers = List.of();
     }
     if (policy == null) {
-      policy = new Policy(false, PolicyEffect.DENY, List.of());
+      policy = new Policy(false, PolicyEffect.DENY, List.of(), true);
     }
     if (audit == null) {
       audit = new Audit(true);
@@ -39,11 +40,16 @@ public record McpGatewayProperties(
    * where every authenticated call is forwarded. Once enabled, {@code defaultEffect} governs calls
    * that no rule matches — it defaults to {@code DENY} so a gateway with rules enabled but not yet
    * written blocks everything instead of silently allowing it.
+   *
+   * <p>{@code filterToolList} additionally hides tools the caller could not invoke from {@code
+   * tools/list}, so discovery never advertises what execution would refuse. Turn it off to keep the
+   * full catalog visible to everyone and enforce only at call time.
    */
   public record Policy(
       @DefaultValue("false") boolean enabled,
       @DefaultValue("DENY") PolicyEffect defaultEffect,
-      List<Rule> rules) {
+      List<Rule> rules,
+      @DefaultValue("true") boolean filterToolList) {
 
     public Policy {
       if (rules == null) {
