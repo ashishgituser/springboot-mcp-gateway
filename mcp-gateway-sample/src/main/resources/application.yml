@@ -17,5 +17,10 @@ management:
 #     servers:
 #       - id: filesystem
 #         endpoint: http://localhost:8081/mcp
+#     rate-limit:
+#       enabled: true
+#       capacity: 100
+#       refill-tokens: 100
+#       refill-period: 1m
 #
-# Auth/policy and rate-limiting configuration land here in later phases (see project README).
+# Auth/policy configuration lands here in a later phase (see project README).

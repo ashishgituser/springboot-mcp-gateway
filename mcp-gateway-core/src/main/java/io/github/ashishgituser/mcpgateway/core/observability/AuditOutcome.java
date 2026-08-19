@@ -4,6 +4,7 @@ package io.github.ashishgituser.mcpgateway.core.observability;
 public enum AuditOutcome {
   ALLOWED,
   DENIED,
+  RATE_LIMITED,
   NOT_FOUND,
   ERROR
 }

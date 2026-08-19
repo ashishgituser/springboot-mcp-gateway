@@ -1,6 +1,7 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEffect;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitScope;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -13,7 +14,8 @@ public record McpGatewayProperties(
     @DefaultValue("/mcp") String mcpEndpoint,
     List<Server> servers,
     Policy policy,
-    Audit audit) {
+    Audit audit,
+    RateLimit rateLimit) {
 
   public McpGatewayProperties {
     if (servers == null) {
@@ -24,6 +26,9 @@ public record McpGatewayProperties(
     }
     if (audit == null) {
       audit = new Audit(true);
+    }
+    if (rateLimit == null) {
+      rateLimit = new RateLimit(false, 100, 100, Duration.ofMinutes(1), RateLimitScope.PRINCIPAL);
     }
   }
 
@@ -68,4 +73,16 @@ public record McpGatewayProperties(
    * isn't wanted.
    */
   public record Audit(@DefaultValue("true") boolean enabled) {}
+
+  /**
+   * Off by default. Once enabled, each call consumes one token from a bucket keyed by {@code
+   * scope}; the bucket refills by {@code refillTokens} every {@code refillPeriod}, up to {@code
+   * capacity}.
+   */
+  public record RateLimit(
+      @DefaultValue("false") boolean enabled,
+      @DefaultValue("100") long capacity,
+      @DefaultValue("100") long refillTokens,
+      @DefaultValue("1m") Duration refillPeriod,
+      @DefaultValue("PRINCIPAL") RateLimitScope scope) {}
 }

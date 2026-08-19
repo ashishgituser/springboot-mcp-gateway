@@ -57,7 +57,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-ai.version>2.0.0</spring-ai.version>
     <mcp-sdk.version>2.0.0</mcp-sdk.version>
-    <bucket4j.version>8.10.1</bucket4j.version>
+    <bucket4j.version>8.15.0</bucket4j.version>
     <mcp-security.version>0.1.14</mcp-security.version>
     <spotless.version>2.44.2</spotless.version>
   </properties>
@@ -97,7 +97,7 @@
 
       <dependency>
         <groupId>com.bucket4j</groupId>
-        <artifactId>bucket4j_jdk17-core</artifactId>
+        <artifactId>bucket4j_jdk11-core</artifactId>
         <version>${bucket4j.version}</version>
       </dependency>
 

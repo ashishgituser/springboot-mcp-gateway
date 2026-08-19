@@ -7,6 +7,9 @@ import io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyDecision;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyDeniedException;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitDecision;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitExceededException;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry.RegisteredTool;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServer;
 import io.micrometer.observation.Observation;
@@ -23,20 +26,28 @@ public class GatewayRouter {
 
   private final ToolRegistry toolRegistry;
   private final PolicyEngine policyEngine;
+  private final RateLimiter rateLimiter;
   private final ObservationRegistry observationRegistry;
   private final AuditLogger auditLogger;
 
   public GatewayRouter(ToolRegistry toolRegistry, PolicyEngine policyEngine) {
-    this(toolRegistry, policyEngine, ObservationRegistry.NOOP, AuditLogger.noop());
+    this(
+        toolRegistry,
+        policyEngine,
+        RateLimiter.unlimited(),
+        ObservationRegistry.NOOP,
+        AuditLogger.noop());
   }
 
   public GatewayRouter(
       ToolRegistry toolRegistry,
       PolicyEngine policyEngine,
+      RateLimiter rateLimiter,
       ObservationRegistry observationRegistry,
       AuditLogger auditLogger) {
     this.toolRegistry = toolRegistry;
     this.policyEngine = policyEngine;
+    this.rateLimiter = rateLimiter;
     this.observationRegistry = observationRegistry;
     this.auditLogger = auditLogger;
   }
@@ -56,6 +67,11 @@ public class GatewayRouter {
       PolicyDecision decision = policyEngine.evaluate(principal, namespacedName);
       if (!decision.allowed()) {
         throw new PolicyDeniedException(principal, namespacedName, decision);
+      }
+
+      RateLimitDecision rateLimitDecision = rateLimiter.checkLimit(principal, namespacedName);
+      if (!rateLimitDecision.allowed()) {
+        throw new RateLimitExceededException(principal, namespacedName, rateLimitDecision);
       }
 
       RegisteredTool registeredTool =
@@ -80,6 +96,16 @@ public class GatewayRouter {
     } catch (PolicyDeniedException e) {
       observation.lowCardinalityKeyValue("outcome", "denied").error(e);
       audit(startedAt, startNanos, principal, namespacedName, AuditOutcome.DENIED, e.getMessage());
+      throw e;
+    } catch (RateLimitExceededException e) {
+      observation.lowCardinalityKeyValue("outcome", "rate_limited").error(e);
+      audit(
+          startedAt,
+          startNanos,
+          principal,
+          namespacedName,
+          AuditOutcome.RATE_LIMITED,
+          e.getMessage());
       throw e;
     } catch (ToolNotFoundException e) {
       observation.lowCardinalityKeyValue("outcome", "not_found").error(e);

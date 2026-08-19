@@ -8,6 +8,8 @@ import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyRule;
 import io.github.ashishgituser.mcpgateway.core.policy.RuleBasedPolicyEngine;
 import io.github.ashishgituser.mcpgateway.core.policy.ToolPattern;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.Bucket4jRateLimiter;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamClientFactory;
@@ -102,13 +104,34 @@ public class McpGatewayAutoConfiguration {
     return properties.audit().enabled() ? new Slf4jAuditLogger() : AuditLogger.noop();
   }
 
+  /**
+   * Off by default, so a gateway with no rate-limit configuration forwards every call, as before
+   * this feature existed. Once enabled, buckets are created lazily per key and kept in memory for
+   * the process lifetime.
+   */
+  @Bean
+  @ConditionalOnMissingBean(RateLimiter.class)
+  public RateLimiter rateLimiter(McpGatewayProperties properties) {
+    McpGatewayProperties.RateLimit rateLimit = properties.rateLimit();
+    if (!rateLimit.enabled()) {
+      return RateLimiter.unlimited();
+    }
+    return new Bucket4jRateLimiter(
+        rateLimit.capacity(),
+        rateLimit.refillTokens(),
+        rateLimit.refillPeriod(),
+        rateLimit.scope());
+  }
+
   @Bean
   public GatewayRouter gatewayRouter(
       ToolRegistry toolRegistry,
       PolicyEngine policyEngine,
+      RateLimiter rateLimiter,
       ObservationRegistry observationRegistry,
       AuditLogger auditLogger) {
-    return new GatewayRouter(toolRegistry, policyEngine, observationRegistry, auditLogger);
+    return new GatewayRouter(
+        toolRegistry, policyEngine, rateLimiter, observationRegistry, auditLogger);
   }
 
   /**

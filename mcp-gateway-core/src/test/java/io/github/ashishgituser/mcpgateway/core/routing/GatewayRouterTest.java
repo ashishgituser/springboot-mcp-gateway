@@ -13,6 +13,9 @@ import io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyDecision;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyDeniedException;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitDecision;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimitExceededException;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServer;
 import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -104,7 +107,12 @@ class GatewayRouterTest {
         .observationConfig()
         .observationHandler(new DefaultMeterObservationHandler(meterRegistry));
     GatewayRouter router =
-        new GatewayRouter(registry, PolicyEngine.permitAll(), observationRegistry, events::add);
+        new GatewayRouter(
+            registry,
+            PolicyEngine.permitAll(),
+            RateLimiter.unlimited(),
+            observationRegistry,
+            events::add);
     when(filesystemClient.callTool(any()))
         .thenReturn(CallToolResult.builder().addTextContent("file contents").build());
 
@@ -127,7 +135,12 @@ class GatewayRouterTest {
     PolicyEngine denyEverything =
         (principal, toolName) -> PolicyDecision.deny("test policy denies everything");
     GatewayRouter router =
-        new GatewayRouter(registry, denyEverything, ObservationRegistry.NOOP, events::add);
+        new GatewayRouter(
+            registry,
+            denyEverything,
+            RateLimiter.unlimited(),
+            ObservationRegistry.NOOP,
+            events::add);
 
     assertThatThrownBy(
         () -> router.callTool(CallToolRequest.builder("fs__readFile").build(), CALLER));
@@ -142,12 +155,40 @@ class GatewayRouterTest {
     List<AuditEvent> events = new ArrayList<>();
     GatewayRouter router =
         new GatewayRouter(
-            registry, PolicyEngine.permitAll(), ObservationRegistry.NOOP, events::add);
+            registry,
+            PolicyEngine.permitAll(),
+            RateLimiter.unlimited(),
+            ObservationRegistry.NOOP,
+            events::add);
 
     assertThatThrownBy(
         () -> router.callTool(CallToolRequest.builder("fs__deleteEverything").build(), CALLER));
 
     assertThat(events).hasSize(1);
     assertThat(events.get(0).outcome()).isEqualTo(AuditOutcome.NOT_FOUND);
+  }
+
+  @Test
+  void deniesTheCallWithoutReachingTheUpstreamWhenRateLimitIsExceeded() {
+    List<AuditEvent> events = new ArrayList<>();
+    RateLimiter alwaysExhausted =
+        (principal, toolName) ->
+            RateLimitDecision.deny(java.time.Duration.ofSeconds(30), "quota exhausted");
+    GatewayRouter router =
+        new GatewayRouter(
+            registry,
+            PolicyEngine.permitAll(),
+            alwaysExhausted,
+            ObservationRegistry.NOOP,
+            events::add);
+
+    assertThatThrownBy(
+            () -> router.callTool(CallToolRequest.builder("fs__readFile").build(), CALLER))
+        .isInstanceOf(RateLimitExceededException.class)
+        .hasMessageContaining("fs__readFile")
+        .hasMessageContaining("alice");
+    verify(filesystemClient, never()).callTool(any());
+    assertThat(events).hasSize(1);
+    assertThat(events.get(0).outcome()).isEqualTo(AuditOutcome.RATE_LIMITED);
   }
 }

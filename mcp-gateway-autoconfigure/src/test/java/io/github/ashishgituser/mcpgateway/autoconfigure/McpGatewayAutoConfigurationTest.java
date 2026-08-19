@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.ashishgituser.mcpgateway.core.observability.AuditLogger;
 import io.github.ashishgituser.mcpgateway.core.observability.Slf4jAuditLogger;
 import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.Bucket4jRateLimiter;
+import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.micrometer.observation.ObservationRegistry;
@@ -39,6 +41,7 @@ class McpGatewayAutoConfigurationTest {
           assertThat(context).hasSingleBean(ObservationRegistry.class);
           assertThat(context).hasSingleBean(AuditLogger.class);
           assertThat(context).hasSingleBean(HealthIndicator.class);
+          assertThat(context).hasSingleBean(RateLimiter.class);
         });
   }
 
@@ -122,6 +125,39 @@ class McpGatewayAutoConfigurationTest {
 
               assertThat(policyEngine.evaluate(admin, "fs__readFile").allowed()).isTrue();
               assertThat(policyEngine.evaluate(viewer, "fs__readFile").allowed()).isFalse();
+            });
+  }
+
+  @Test
+  void rateLimiterIsUnlimitedWhenNotEnabled() {
+    contextRunner.run(
+        context -> {
+          RateLimiter rateLimiter = context.getBean(RateLimiter.class);
+          var caller = io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal.ANONYMOUS;
+          for (int i = 0; i < 1000; i++) {
+            assertThat(rateLimiter.checkLimit(caller, "fs__anything").allowed()).isTrue();
+          }
+        });
+  }
+
+  @Test
+  void rateLimiterEnforcesConfiguredCapacityWhenEnabled() {
+    contextRunner
+        .withPropertyValues(
+            "mcp.gateway.rate-limit.enabled=true",
+            "mcp.gateway.rate-limit.capacity=1",
+            "mcp.gateway.rate-limit.refill-tokens=1",
+            "mcp.gateway.rate-limit.refill-period=1m")
+        .run(
+            context -> {
+              assertThat(context.getBean(RateLimiter.class))
+                  .isInstanceOf(Bucket4jRateLimiter.class);
+              RateLimiter rateLimiter = context.getBean(RateLimiter.class);
+              var caller =
+                  io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal.ANONYMOUS;
+
+              assertThat(rateLimiter.checkLimit(caller, "fs__anything").allowed()).isTrue();
+              assertThat(rateLimiter.checkLimit(caller, "fs__anything").allowed()).isFalse();
             });
   }
 

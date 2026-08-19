@@ -67,14 +67,12 @@
   <path d="M480 284 V320" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
 
   <g>
-    <rect x="335" y="324" width="290" height="62" rx="6" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
-    <rect x="351" y="342" width="26" height="26" rx="5" fill="#8A8886"/>
+    <rect x="335" y="324" width="290" height="62" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="351" y="342" width="26" height="26" rx="5" fill="#0078D4"/>
     <circle cx="364" cy="355" r="7" fill="none" stroke="#FFFFFF" stroke-width="2"/>
     <path d="M364 351 v4 l3 3" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
     <text x="389" y="350" font-size="13.5" font-weight="600" fill="#243A5E">Rate limiting &amp; quota</text>
     <text x="389" y="368" font-size="11" fill="#605E5C">Bucket4j · per client and per tool</text>
-    <rect x="566" y="332" width="50" height="16" rx="8" fill="#EDEBE9"/>
-    <text x="573" y="344" font-size="9.5" font-weight="600" fill="#605E5C">PLANNED</text>
   </g>
   <path d="M480 386 V422" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
 
@@ -171,11 +169,9 @@
   <!-- ============ LEGEND ============ -->
   <line x1="30" y1="672" x2="1210" y2="672" stroke="#EDEBE9" stroke-width="1"/>
   <rect x="30" y="694" width="18" height="18" rx="4" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
-  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented today — routing/aggregation, auth &amp; policy, observability</text>
-  <rect x="470" y="694" width="18" height="18" rx="4" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
-  <text x="496" y="707" font-size="12" fill="#605E5C">Planned — rate limiting</text>
-  <path d="M840 703 H872" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
-  <text x="880" y="707" font-size="12" fill="#605E5C">request path</text>
-  <path d="M985 703 H1017" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
-  <text x="1025" y="707" font-size="12" fill="#605E5C">metadata / telemetry</text>
+  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented — routing/aggregation, auth &amp; policy, observability, rate limiting</text>
+  <path d="M700 703 H732" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="740" y="707" font-size="12" fill="#605E5C">request path</text>
+  <path d="M845 703 H877" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>
+  <text x="885" y="707" font-size="12" fill="#605E5C">metadata / telemetry</text>
 </svg>

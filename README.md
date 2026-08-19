@@ -2,7 +2,7 @@
 
 A Spring Boot starter that puts a single gateway in front of multiple [MCP](https://modelcontextprotocol.io) (Model Context Protocol) servers: one endpoint for clients, with routing, auth/policy enforcement, observability and rate limiting handled centrally instead of in every downstream server.
 
-> **Status:** early development. Multi-server routing/aggregation, auth/policy enforcement and observability are implemented; rate limiting is next. Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
+> **Status:** early development. All four MVP features — routing/aggregation, auth/policy enforcement, observability and rate limiting — are implemented. Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
 
 ## Architecture
 
@@ -80,7 +80,7 @@ mcp:
 
 Every tool call is recorded three ways, none of which require any configuration to start working:
 
-- **Metrics** — a `mcp.gateway.tool.call` timer, tagged with `tool.name` and `outcome` (`allowed`, `denied`, `not_found`, `error`), recorded through Micrometer's `ObservationRegistry`. Add `spring-boot-starter-actuator` and it's exported over `/actuator/metrics` automatically; add a `micrometer-tracing` bridge and the same observation produces spans too.
+- **Metrics** — a `mcp.gateway.tool.call` timer, tagged with `tool.name` and `outcome` (`allowed`, `denied`, `rate_limited`, `not_found`, `error`), recorded through Micrometer's `ObservationRegistry`. Add `spring-boot-starter-actuator` and it's exported over `/actuator/metrics` automatically; add a `micrometer-tracing` bridge and the same observation produces spans too.
 - **Health** — an `upstreams` health indicator pings every configured upstream's MCP session and reports `UP`/`DOWN` per server under `/actuator/health` (requires `spring-boot-starter-actuator`).
 - **Audit log** — a structured JSON line per call (`principal`, `tool`, `outcome`, `durationMs`, `reason`) written via SLF4J on the `io.github.ashishgituser.mcpgateway.audit` logger, so it can be routed to its own file or log sink independently of application logs.
 
@@ -93,13 +93,30 @@ mcp:
 
 None of this requires Actuator: without it, calls still flow through a no-op `ObservationRegistry` and the audit log keeps writing — metrics and the health endpoint just aren't exported anywhere until you add it.
 
+### Rate limiting
+
+Off by default. Once enabled, each call consumes one token from an in-memory [Bucket4j](https://bucket4j.com) bucket; the bucket refills at a fixed rate up to a capacity. Calls over quota are rejected before reaching an upstream, the same as a policy denial.
+
+```yaml
+mcp:
+  gateway:
+    rate-limit:
+      enabled: true       # default false
+      capacity: 100        # max tokens a bucket can hold
+      refill-tokens: 100    # tokens added per refill-period
+      refill-period: 1m
+      scope: PRINCIPAL     # PRINCIPAL (default) | TOOL | PRINCIPAL_AND_TOOL
+```
+
+`scope` decides what the quota is shared across: `PRINCIPAL` gives each caller one quota for every tool they call, `TOOL` gives each tool one shared quota across every caller, and `PRINCIPAL_AND_TOOL` tracks a separate quota per (caller, tool) pair. Bring your own `RateLimiter` bean to swap in a distributed limiter (e.g. Redis-backed) instead of the in-memory default.
+
 ## Roadmap
 
 - [x] Multi-module project scaffolding
 - [x] Multi-server routing/aggregation
 - [x] Auth & policy enforcement (built on [mcp-security](https://github.com/spring-ai-community/mcp-security))
 - [x] Observability: metrics, health, audit logging
-- [ ] Rate limiting / quota management
+- [x] Rate limiting / quota management (built on [Bucket4j](https://bucket4j.com))
 - [ ] Maven Central release
 
 ## Contributing
