@@ -9,7 +9,7 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
-<img src="docs/architecture.svg" alt="Architecture: clients call one MCP endpoint; the gateway authenticates, throttles, routes and fans out to upstream MCP servers" width="100%">
+<img src="docs/architecture.svg" alt="Architecture: AI agents call one MCP endpoint; the gateway resolves identity, authorizes, applies quota, routes and audits, then fans out to upstream MCP servers" width="100%">
 
 ## The problem
 
