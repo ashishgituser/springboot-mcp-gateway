@@ -40,7 +40,7 @@ Answering those N times is how you get N different answers. Put the gateway at t
 
 **Authorization-aware discovery.** Most gateways deny a call at execution time but still hand every caller the full tool catalog — which leaks the name, description and argument schema of every tool behind the gateway. Here `tools/list` runs through the same policy engine as `tools/call`, so a caller is only ever shown tools it could actually invoke. An analyst and an admin connecting to the same endpoint see different catalogs. ([how it is proved](#testing))
 
-**Spring-native.** Not a sidecar, not another runtime to operate. It is a Spring Boot starter that binds `mcp.gateway.*` and integrates with the Spring Security context you already have, so roles come from your existing identity provider. If you would rather run it as its own service, the same thing ships as a container image.
+**Spring-native.** Not a sidecar, not another runtime to operate. It is a Spring Boot starter that binds `mcp.gateway.*` and integrates with the Spring Security context you already have, so roles come from your existing identity provider. Runs on Boot 4.1 and Boot 3.x, and if you would rather not embed it at all, the same thing ships as a container image.
 
 **Survives its upstreams.** Sessions open lazily and are guarded by a circuit breaker, so one unreachable MCP server does not fail the gateway's startup or cost every caller a request timeout. Catalogs refresh on a schedule, so a server deployed after the gateway joins by itself.
 
@@ -196,7 +196,7 @@ Consecutive transport failures take an upstream out of rotation for `open-durati
 
 | | Supported | Notes |
 |---|---|---|
-| Spring Boot | 4.1.x | 3.x support is being investigated for 0.3 |
+| Spring Boot | 4.1.x, and 3.x | Boot 3 loses only the Actuator health indicator — [details](docs/spring-boot-3.md), verified in CI |
 | Java | 17, 21 | both tested in CI |
 | MCP SDK | 2.0.0 | |
 | Client → gateway transport | Streamable HTTP | SSE and stdio not yet supported |
@@ -236,13 +236,14 @@ Consecutive transport failures take an upstream out of rotation for `open-durati
 - [x] Redis-backed distributed rate limiter
 - [x] Proxy MCP prompts and resources, not just tools
 - [x] Published latency benchmarks
-- [ ] Spring Boot 3.x compatibility
+- [x] Spring Boot 3.x compatibility
 
 ## Documentation
 
 - [Architecture and request lifecycle](docs/architecture.md)
 - [Security model and threat coverage](docs/security.md)
 - [Benchmarks](docs/benchmarks.md)
+- [Running on Spring Boot 3.x](docs/spring-boot-3.md)
 - [Releasing](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
 

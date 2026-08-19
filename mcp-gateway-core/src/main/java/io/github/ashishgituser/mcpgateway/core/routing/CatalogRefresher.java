@@ -47,13 +47,13 @@ public class CatalogRefresher implements AutoCloseable {
             });
     scheduler.scheduleWithFixedDelay(
         this::refreshQuietly, interval.toMillis(), interval.toMillis(), TimeUnit.MILLISECONDS);
-    logger.info("Refreshing upstream tool catalogs every {}", interval);
+    logger.info("Refreshing upstream catalogs every {}", interval);
   }
 
   private void refreshQuietly() {
     try {
       if (refresh.getAsBoolean()) {
-        logger.info("Upstream tool catalog changed; notifying connected clients");
+        logger.info("Upstream catalog changed; notifying connected clients");
         onCatalogChanged.run();
       }
     } catch (RuntimeException e) {

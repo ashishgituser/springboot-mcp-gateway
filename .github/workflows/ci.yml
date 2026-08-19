@@ -24,3 +24,10 @@ jobs:
 
       - name: Build and test
         run: mvn -B -ntp verify
+
+      # The starter is published against Boot 4 but supported on Boot 3, and a claim like that
+      # rots unless something checks it. Boots the starter on Boot 3.5 and drives it end to end.
+      - name: Spring Boot 3 compatibility
+        run: |
+          mvn -B -ntp install -DskipTests
+          mvn -B -ntp -f compat/boot3/pom.xml compile exec:java
