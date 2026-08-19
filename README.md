@@ -2,13 +2,13 @@
 
 A Spring Boot starter that puts a single gateway in front of multiple [MCP](https://modelcontextprotocol.io) (Model Context Protocol) servers: one endpoint for clients, with routing, auth/policy enforcement, observability and rate limiting handled centrally instead of in every downstream server.
 
-> **Status:** early development. Multi-server routing/aggregation is implemented; policy, observability and rate limiting are being built module by module. Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
+> **Status:** early development. Multi-server routing/aggregation and auth/policy enforcement are implemented; observability and rate limiting are being built module by module. Not yet published to Maven Central — see [CHANGELOG.md](CHANGELOG.md) for progress.
 
 ## Architecture
 
 <img src="docs/architecture.svg" alt="Architecture: clients call one MCP endpoint; the gateway authenticates, throttles, routes and fans out to upstream MCP servers" width="100%">
 
-Clients connect to a single MCP endpoint. The gateway authenticates the caller, applies quota, resolves the namespaced tool name to the upstream that owns it, and forwards the call over an MCP client connection. Tool catalogs from every upstream are merged into one registry at startup, so clients see a single list of tools.
+Clients connect to a single MCP endpoint. The gateway authenticates the caller (delegated to `mcp-security`), checks the call against policy, applies quota, resolves the namespaced tool name to the upstream that owns it, and forwards the call over an MCP client connection. Tool catalogs from every upstream are merged into one registry at startup, so clients see a single list of tools.
 
 ## Why
 
@@ -51,11 +51,36 @@ mcp:
 
 Each upstream server's tools are exposed under a namespaced name, `<serverId>__<toolName>` (e.g. `filesystem__readFile`), so tools from different servers never collide.
 
+### Auth & policy
+
+Authentication is delegated entirely to [mcp-security](https://github.com/spring-ai-community/mcp-security) — add `org.springaicommunity:mcp-server-security-spring-boot` and configure it per its own docs (OAuth2 resource server or API keys). The gateway adds authorization on top: an allow/deny policy engine that decides whether an authenticated (or anonymous) caller may invoke a given tool.
+
+```yaml
+mcp:
+  gateway:
+    policy:
+      enabled: true      # default false — until enabled, every call is forwarded as before
+      default-effect: DENY  # applied when no rule below matches; ALLOW is also valid
+      rules:
+        # Rules are evaluated top to bottom; the first match wins, so put narrow
+        # exceptions above the broad rule they override.
+        - effect: DENY
+          tools: ["filesystem__delete*"]
+        - effect: ALLOW
+          roles: ["admin"]
+          tools: ["*"]
+        - effect: ALLOW
+          principals: ["ci-bot"]
+          tools: ["database__query"]
+```
+
+`principals`, `roles` and `tools` are all optional per rule — an omitted constraint matches anything, and `tools` entries are globs over the *namespaced* tool name (`*` and `?` wildcards). Roles only populate when Spring Security authenticates the caller (e.g. via `mcp-security`); without it, callers resolve to the servlet principal's name with no roles, so role-based rules never match.
+
 ## Roadmap
 
 - [x] Multi-module project scaffolding
 - [x] Multi-server routing/aggregation
-- [ ] Auth & policy enforcement (built on [mcp-security](https://github.com/spring-ai-community/mcp-security))
+- [x] Auth & policy enforcement (built on [mcp-security](https://github.com/spring-ai-community/mcp-security))
 - [ ] Observability: metrics, tracing, audit logging
 - [ ] Rate limiting / quota management
 - [ ] Maven Central release

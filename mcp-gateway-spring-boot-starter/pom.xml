@@ -28,5 +28,18 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
+
+    <!--
+      Optional: brings OAuth2/API-key authentication for the gateway's MCP endpoint. Not required
+      to use the gateway — omit it and every caller resolves to GatewayPrincipal.ANONYMOUS, so
+      policy rules can only key on tool name. Add it (and its own mcp.security.* configuration,
+      see https://github.com/spring-ai-community/mcp-security) to authenticate callers, which also
+      unlocks role-based policy rules via mcp.gateway.policy.rules[].roles.
+    -->
+    <dependency>
+      <groupId>org.springaicommunity</groupId>
+      <artifactId>mcp-server-security-spring-boot</artifactId>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
 </project>

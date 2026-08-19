@@ -57,14 +57,12 @@
   <path d="M480 182 V218" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
 
   <g>
-    <rect x="335" y="222" width="290" height="62" rx="6" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
-    <rect x="351" y="240" width="26" height="26" rx="5" fill="#8A8886"/>
+    <rect x="335" y="222" width="290" height="62" rx="6" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+    <rect x="351" y="240" width="26" height="26" rx="5" fill="#0078D4"/>
     <path d="M359 253 v-4 a5 5 0 0 1 10 0 v4" stroke="#FFFFFF" stroke-width="2" fill="none"/>
     <rect x="357" y="252" width="14" height="9" rx="2" fill="#FFFFFF"/>
     <text x="389" y="248" font-size="13.5" font-weight="600" fill="#243A5E">Auth &amp; policy enforcement</text>
-    <text x="389" y="266" font-size="11" fill="#605E5C">OAuth2 / JWT · per-tool allow rules</text>
-    <rect x="566" y="230" width="50" height="16" rx="8" fill="#EDEBE9"/>
-    <text x="573" y="242" font-size="9.5" font-weight="600" fill="#605E5C">PLANNED</text>
+    <text x="389" y="266" font-size="11" fill="#605E5C">mcp-security auth · allow/deny rules</text>
   </g>
   <path d="M480 284 V320" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
 
@@ -175,9 +173,9 @@
   <!-- ============ LEGEND ============ -->
   <line x1="30" y1="672" x2="1210" y2="672" stroke="#EDEBE9" stroke-width="1"/>
   <rect x="30" y="694" width="18" height="18" rx="4" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
-  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented today — multi-server routing and tool aggregation</text>
+  <text x="56" y="707" font-size="12" fill="#605E5C">Implemented today — routing/aggregation, auth &amp; policy enforcement</text>
   <rect x="470" y="694" width="18" height="18" rx="4" fill="#FAF9F8" stroke="#C8C6C4" stroke-dasharray="4 3"/>
-  <text x="496" y="707" font-size="12" fill="#605E5C">Planned — auth/policy, observability, rate limiting</text>
+  <text x="496" y="707" font-size="12" fill="#605E5C">Planned — observability, rate limiting</text>
   <path d="M840 703 H872" fill="none" stroke="#0078D4" stroke-width="1.6" marker-end="url(#arw)"/>
   <text x="880" y="707" font-size="12" fill="#605E5C">request path</text>
   <path d="M985 703 H1017" fill="none" stroke="#8A8886" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arwg)"/>

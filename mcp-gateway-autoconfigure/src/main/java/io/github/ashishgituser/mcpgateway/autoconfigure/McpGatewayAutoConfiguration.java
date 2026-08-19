@@ -1,5 +1,11 @@
 package io.github.ashishgituser.mcpgateway.autoconfigure;
 
+import io.github.ashishgituser.mcpgateway.autoconfigure.McpGatewayProperties.Policy.Rule;
+import io.github.ashishgituser.mcpgateway.core.policy.GatewayPrincipal;
+import io.github.ashishgituser.mcpgateway.core.policy.PolicyEngine;
+import io.github.ashishgituser.mcpgateway.core.policy.PolicyRule;
+import io.github.ashishgituser.mcpgateway.core.policy.RuleBasedPolicyEngine;
+import io.github.ashishgituser.mcpgateway.core.policy.ToolPattern;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamClientFactory;
@@ -13,6 +19,7 @@ import jakarta.servlet.Servlet;
 import java.util.List;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -53,16 +60,64 @@ public class McpGatewayAutoConfiguration {
     return registry;
   }
 
+  /**
+   * Off by default so a gateway with no policy configuration keeps forwarding every call, as before
+   * this feature existed. Once {@code mcp.gateway.policy.enabled=true}, calls matching no rule fall
+   * back to {@code policy.defaultEffect} (DENY unless overridden).
+   */
   @Bean
-  public GatewayRouter gatewayRouter(ToolRegistry toolRegistry) {
-    return new GatewayRouter(toolRegistry);
+  @ConditionalOnMissingBean(PolicyEngine.class)
+  public PolicyEngine policyEngine(McpGatewayProperties properties) {
+    McpGatewayProperties.Policy policy = properties.policy();
+    if (!policy.enabled()) {
+      return PolicyEngine.permitAll();
+    }
+    List<PolicyRule> rules =
+        policy.rules().stream().map(McpGatewayAutoConfiguration::toPolicyRule).toList();
+    return new RuleBasedPolicyEngine(rules, policy.defaultEffect());
+  }
+
+  private static PolicyRule toPolicyRule(Rule rule) {
+    List<ToolPattern> tools = rule.tools().stream().map(ToolPattern::of).toList();
+    return new PolicyRule(rule.effect(), rule.principals(), rule.roles(), tools);
+  }
+
+  @Bean
+  public GatewayRouter gatewayRouter(ToolRegistry toolRegistry, PolicyEngine policyEngine) {
+    return new GatewayRouter(toolRegistry, policyEngine);
+  }
+
+  /**
+   * Resolves the caller from Spring Security's context — populated by {@code mcp-server-security}
+   * (or the application's own filter chain) before the MCP servlet runs — whenever Spring Security
+   * is present. This is what makes role-based policy rules work without the gateway having any auth
+   * logic of its own.
+   */
+  @Bean
+  @ConditionalOnClass(name = "org.springframework.security.core.Authentication")
+  @ConditionalOnMissingBean(PrincipalResolver.class)
+  public PrincipalResolver securityContextPrincipalResolver() {
+    return new SecurityContextPrincipalResolver();
+  }
+
+  /** Fallback for applications that haven't added Spring Security: uses the servlet principal. */
+  @Bean
+  @ConditionalOnMissingBean(PrincipalResolver.class)
+  public PrincipalResolver servletPrincipalResolver() {
+    return new ServletPrincipalResolver();
+  }
+
+  @Bean
+  public PrincipalContextExtractor principalContextExtractor(PrincipalResolver principalResolver) {
+    return new PrincipalContextExtractor(principalResolver);
   }
 
   @Bean
   public HttpServletStreamableServerTransportProvider mcpTransportProvider(
-      McpGatewayProperties properties) {
+      McpGatewayProperties properties, PrincipalContextExtractor principalContextExtractor) {
     return HttpServletStreamableServerTransportProvider.builder()
         .mcpEndpoint(properties.mcpEndpoint())
+        .contextExtractor(principalContextExtractor)
         .build();
   }
 
@@ -77,7 +132,16 @@ public class McpGatewayAutoConfiguration {
                 tool ->
                     SyncToolSpecification.builder()
                         .tool(tool)
-                        .callHandler((exchange, request) -> gatewayRouter.callTool(request))
+                        .callHandler(
+                            (exchange, request) -> {
+                              Object contextPrincipal =
+                                  exchange.transportContext().get(GatewayPrincipal.CONTEXT_KEY);
+                              GatewayPrincipal principal =
+                                  contextPrincipal instanceof GatewayPrincipal resolved
+                                      ? resolved
+                                      : GatewayPrincipal.ANONYMOUS;
+                              return gatewayRouter.callTool(request, principal);
+                            })
                         .build())
             .toList();
     return McpServer.sync(transportProvider)
