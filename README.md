@@ -85,7 +85,7 @@ mcp:
         endpoint: http://database-mcp:8080/mcp
 ```
 
-That is a working gateway: both servers' tools are merged into one catalog, namespaced `<serverId>__<toolName>` so names never collide, and served on `/mcp`. Everything below is optional hardening on top.
+That is a working gateway: both servers' tools and prompts are merged into one catalog, namespaced `<serverId>__<name>` so names never collide, their resources are aggregated too, and the lot is served on `/mcp`. Everything below is optional hardening on top.
 
 For an unreleased commit, [JitPack](https://jitpack.io/#ashishgituser/springboot-mcp-gateway) builds any tag or commit on demand (`com.github.ashishgituser.springboot-mcp-gateway:mcp-gateway-spring-boot-starter:main-SNAPSHOT`).
 
@@ -126,7 +126,14 @@ mcp:
           tools: ["github__createPullRequest"]
 ```
 
-`principals`, `roles` and `tools` are each optional — an omitted constraint matches anything. `tools` entries are globs (`*`, `?`) over the namespaced name. Roles populate when Spring Security authenticates the caller; without it, callers resolve to the servlet principal with no roles, so role rules never match.
+`principals`, `roles` and `tools` are each optional — an omitted constraint matches anything. Roles populate when Spring Security authenticates the caller; without it, callers resolve to the servlet principal with no roles, so role rules never match.
+
+`tools` entries are globs (`*`, `?`) matched against **every MCP capability**, not just tools: the namespaced tool name, the namespaced prompt name, and the resource URI. That is deliberate — if rules only covered tools, an agent denied `docs__internalReview` could read the same content as a resource instead. It also means URI patterns work directly:
+
+```yaml
+- effect: DENY
+  tools: ["file:///etc/*", "*__delete*"]
+```
 
 Set `filter-tool-list: false` if you publish your tool inventory elsewhere and want the full catalog visible with enforcement only at call time.
 
@@ -172,13 +179,16 @@ mcp:
   gateway:
     refresh-interval: 60s   # 0 to freeze the catalog at whatever startup found
     request-timeout: 20s
+    circuit-breaker:
+      failure-threshold: 3
+      open-duration: 30s
     servers:
       - id: github
         endpoint: http://github-mcp:8080/mcp
         request-timeout: 10s
 ```
 
-Three consecutive transport failures take an upstream out of rotation for 30 seconds; one probe then decides whether it is back. Protocol errors don't count — the server answered, so it is up.
+Consecutive transport failures take an upstream out of rotation for `open-duration`; one probe then decides whether it is back. Protocol errors don't count — the server answered, so it is up.
 
 ## Compatibility
 
@@ -189,14 +199,14 @@ Three consecutive transport failures take an upstream out of rotation for 30 sec
 | MCP SDK | 2.0.0 | |
 | Client → gateway transport | Streamable HTTP | SSE and stdio not yet supported |
 | Gateway → upstream transport | Streamable HTTP | |
-| MCP primitives proxied | Tools | resources and prompts are not proxied yet |
+| MCP primitives proxied | Tools, prompts, resources | resource subscriptions and completions are not |
 | Rate limiting | In-memory or Redis | `mcp.gateway.rate-limit.store` |
 
 ## Modules
 
 | Module | Purpose |
 |---|---|
-| `mcp-gateway-core` | Routing, policy, tool visibility, rate-limit SPI, audit model, upstream resilience. No Spring dependency. |
+| `mcp-gateway-core` | Routing, policy, capability visibility, rate-limit SPI, audit model, upstream resilience. No Spring dependency. |
 | `mcp-gateway-autoconfigure` | `@AutoConfiguration` and `mcp.gateway.*` binding. |
 | `mcp-gateway-spring-boot-starter` | The dependency you add to your app. |
 | `mcp-gateway-server` | Standalone container-ready distribution. |
@@ -207,9 +217,9 @@ Three consecutive transport failures take an upstream out of rotation for 30 sec
 
 `mvn -B verify` runs three layers, on Java 17 and 21 in CI:
 
-- **Unit tests** — router, policy engine, tool visibility, rate limiter, argument redaction, circuit breaker.
+- **Unit tests** — router, policy engine, capability visibility, rate limiter, argument redaction, circuit breaker.
 - **Architecture tests** (ArchUnit) — `mcp-gateway-core` may not reference Spring or Servlet classes; its policy/rate-limit/observability packages may not depend back on the router; autoconfiguration is constructor-wired, never field-injected.
-- **End-to-end tests** — real MCP servers booted in-process, driven through the gateway's real HTTP endpoint by a real MCP client. They assert what the claims above depend on: that a denied tool is **absent from `tools/list`**, that a denied call never reaches the upstream (proved with upstream invocation counters, not response shape), that quota rejection happens before the upstream, and that a gateway boots and serves while one of its upstreams is dead, then folds it back in when it returns.
+- **End-to-end tests** — real MCP servers booted in-process, driven through the gateway's real HTTP endpoint by a real MCP client. They assert what the claims above depend on: that a denied tool is **absent from `tools/list`**, that a denied call never reaches the upstream (proved with upstream invocation counters, not response shape), that quota rejection happens before the upstream, that a denied prompt and a denied resource URI are refused the same way a denied tool is (so no primitive is a way around a rule), and that a gateway boots and serves while one of its upstreams is dead, then folds it back in when it returns.
 
 ## Roadmap
 
@@ -222,10 +232,9 @@ Three consecutive transport failures take an upstream out of rotation for 30 sec
 - [x] Audit argument capture with redaction
 - [x] Container image and docker compose quickstart
 - [x] Redis-backed distributed rate limiter
-- [ ] Proxy MCP resources and prompts, not just tools
+- [x] Proxy MCP prompts and resources, not just tools
 - [ ] Spring Boot 3.x compatibility
 - [ ] Published latency benchmarks
-- [ ] Helm chart
 
 ## Documentation
 

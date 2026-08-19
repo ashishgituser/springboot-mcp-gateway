@@ -86,6 +86,9 @@ class UpstreamOutageIntegrationTest {
     registry.add("mcp.gateway.servers[1].request-timeout", () -> "2s");
     // The test drives refreshes itself rather than waiting on the scheduler.
     registry.add("mcp.gateway.refresh-interval", () -> "0");
+    // Startup probes tools, prompts and resources, so the dead upstream trips the breaker straight
+    // away. A short window keeps the recovery case from waiting out the 30s default.
+    registry.add("mcp.gateway.circuit-breaker.open-duration", () -> "1ms");
   }
 
   @BeforeEach

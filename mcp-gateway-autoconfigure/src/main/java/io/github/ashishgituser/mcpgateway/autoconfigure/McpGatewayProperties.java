@@ -17,6 +17,7 @@ public record McpGatewayProperties(
     @DefaultValue("20s") Duration requestTimeout,
     @DefaultValue("60s") Duration refreshInterval,
     List<Server> servers,
+    CircuitBreaker circuitBreaker,
     Policy policy,
     Audit audit,
     RateLimit rateLimit) {
@@ -24,6 +25,9 @@ public record McpGatewayProperties(
   public McpGatewayProperties {
     if (servers == null) {
       servers = List.of();
+    }
+    if (circuitBreaker == null) {
+      circuitBreaker = new CircuitBreaker(3, Duration.ofSeconds(30));
     }
     if (policy == null) {
       policy = new Policy(false, PolicyEffect.DENY, List.of(), true);
@@ -44,6 +48,14 @@ public record McpGatewayProperties(
   }
 
   public record Server(String id, String endpoint, @DefaultValue("10s") Duration requestTimeout) {}
+
+  /**
+   * How quickly an upstream is taken out of rotation, and for how long. Failures here mean
+   * transport failures; an upstream that answers with a protocol error is still up and does not
+   * count.
+   */
+  public record CircuitBreaker(
+      @DefaultValue("3") int failureThreshold, @DefaultValue("30s") Duration openDuration) {}
 
   /**
    * Policy is opt-in: {@code enabled: false} (the default) preserves the pre-Phase-3 behaviour

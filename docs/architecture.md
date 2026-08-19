@@ -30,7 +30,7 @@ transportProvider.setSessionFactory(
         requestTimeout, initRequestHandler, requestHandlers, notificationHandlers, onClose));
 ```
 
-`GatewayServerHandlers` supplies `ping`, `tools/list` and `tools/call`; `GatewayInitRequestHandler` negotiates the protocol version. Everything else about the transport — sessions, SSE framing, resumability — is still the SDK's. This is also what leaves room to proxy resources and prompts later: they are two more entries in the same map.
+`GatewayServerHandlers` supplies `ping`, `tools/list`, `tools/call`, `prompts/list`, `prompts/get`, `resources/list`, `resources/templates/list` and `resources/read`; `GatewayInitRequestHandler` negotiates the protocol version. Everything else about the transport — sessions, SSE framing, resumability — is still the SDK's.
 
 ## Request lifecycle
 
@@ -50,9 +50,13 @@ A `tools/call` from a client to an upstream, in order:
 
 A `tools/list` follows steps 1–4, then asks `GatewayRouter.listTools(principal)`, which filters `ToolRegistry.allTools()` through `ToolVisibility`. With the default `ToolVisibility.governedBy(policyEngine)`, that is the same evaluation step 5 would make — which is precisely why the two can never disagree.
 
-## Tool namespacing
+## Namespacing
 
-Upstream tools are published as `<serverId>__<toolName>`. Two servers can both expose `search` without colliding, policy rules can target a whole server with `github__*`, and the mapping back to the original name is what the router forwards. The separator is a double underscore because MCP tool names are conventionally `[a-zA-Z0-9_-]`, so it stays a legal name.
+Upstream tools and prompts are published as `<serverId>__<name>`. Two servers can both expose `search` without colliding, policy rules can target a whole server with `github__*`, and the mapping back to the original name is what the router forwards. The separator is a double underscore because MCP names are conventionally `[a-zA-Z0-9_-]`, so it stays a legal name.
+
+Resources are the exception: they are identified by a URI, the URI is meaningful to the client, and there is no namespacing scheme the spec blesses — rewriting it would break clients that resolve it. So resource URIs pass through unchanged and `ResourceRegistry` remembers which upstream owns each one. Two upstreams publishing the same URI is a configuration mistake, so it is logged and the first registration wins rather than flip-flopping on each refresh.
+
+Policy sees all three under one namespace: the namespaced tool name, the namespaced prompt name, or the resource URI. That is what stops a rule written for a tool being sidestepped by asking for the same content as a resource.
 
 ## Catalog lifecycle
 

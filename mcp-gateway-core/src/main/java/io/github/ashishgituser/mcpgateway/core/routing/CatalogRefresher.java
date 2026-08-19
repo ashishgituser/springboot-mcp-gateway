@@ -4,11 +4,12 @@ import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Re-reads the upstream tool catalogs on a fixed interval.
+ * Re-reads the upstream catalogs on a fixed interval.
  *
  * <p>Without this the catalog is whatever the upstreams reported the moment the gateway started: an
  * upstream that was down at boot never appears, one that was restarted with new tools is never
@@ -20,14 +21,14 @@ public class CatalogRefresher implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(CatalogRefresher.class);
 
-  private final ToolRegistry toolRegistry;
+  private final BooleanSupplier refresh;
   private final Duration interval;
   private final Runnable onCatalogChanged;
 
   private ScheduledExecutorService scheduler;
 
-  public CatalogRefresher(ToolRegistry toolRegistry, Duration interval, Runnable onCatalogChanged) {
-    this.toolRegistry = toolRegistry;
+  public CatalogRefresher(BooleanSupplier refresh, Duration interval, Runnable onCatalogChanged) {
+    this.refresh = refresh;
     this.interval = interval;
     this.onCatalogChanged = onCatalogChanged;
   }
@@ -51,7 +52,7 @@ public class CatalogRefresher implements AutoCloseable {
 
   private void refreshQuietly() {
     try {
-      if (toolRegistry.refresh()) {
+      if (refresh.getAsBoolean()) {
         logger.info("Upstream tool catalog changed; notifying connected clients");
         onCatalogChanged.run();
       }

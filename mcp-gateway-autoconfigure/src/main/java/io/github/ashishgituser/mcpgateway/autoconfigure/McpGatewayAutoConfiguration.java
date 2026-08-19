@@ -16,6 +16,8 @@ import io.github.ashishgituser.mcpgateway.core.ratelimit.Bucket4jRateLimiter;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
 import io.github.ashishgituser.mcpgateway.core.routing.CatalogRefresher;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
+import io.github.ashishgituser.mcpgateway.core.routing.PromptRegistry;
+import io.github.ashishgituser.mcpgateway.core.routing.ResourceRegistry;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamClientFactory;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamServer;
@@ -51,8 +53,9 @@ public class McpGatewayAutoConfiguration {
   private static final String SERVER_NAME = "mcp-gateway";
 
   @Bean
-  public UpstreamClientFactory upstreamClientFactory() {
-    return new UpstreamClientFactory();
+  public UpstreamClientFactory upstreamClientFactory(McpGatewayProperties properties) {
+    McpGatewayProperties.CircuitBreaker breaker = properties.circuitBreaker();
+    return new UpstreamClientFactory(breaker.failureThreshold(), breaker.openDuration());
   }
 
   @Bean
@@ -70,6 +73,20 @@ public class McpGatewayAutoConfiguration {
   @Bean
   public ToolRegistry toolRegistry(List<UpstreamServer> upstreamServers) {
     ToolRegistry registry = new ToolRegistry(upstreamServers);
+    registry.refresh();
+    return registry;
+  }
+
+  @Bean
+  public PromptRegistry promptRegistry(List<UpstreamServer> upstreamServers) {
+    PromptRegistry registry = new PromptRegistry(upstreamServers);
+    registry.refresh();
+    return registry;
+  }
+
+  @Bean
+  public ResourceRegistry resourceRegistry(List<UpstreamServer> upstreamServers) {
+    ResourceRegistry registry = new ResourceRegistry(upstreamServers);
     registry.refresh();
     return registry;
   }
@@ -171,13 +188,22 @@ public class McpGatewayAutoConfiguration {
   @Bean
   public GatewayRouter gatewayRouter(
       ToolRegistry toolRegistry,
+      PromptRegistry promptRegistry,
+      ResourceRegistry resourceRegistry,
       PolicyEngine policyEngine,
       RateLimiter rateLimiter,
       ObservationRegistry observationRegistry,
       AuditLogger auditLogger,
       ToolVisibility toolVisibility) {
     return new GatewayRouter(
-        toolRegistry, policyEngine, rateLimiter, observationRegistry, auditLogger, toolVisibility);
+        toolRegistry,
+        promptRegistry,
+        resourceRegistry,
+        policyEngine,
+        rateLimiter,
+        observationRegistry,
+        auditLogger,
+        toolVisibility);
   }
 
   /**
@@ -231,7 +257,11 @@ public class McpGatewayAutoConfiguration {
       GatewayServerHandlers handlers,
       McpGatewayProperties properties) {
     McpSchema.ServerCapabilities capabilities =
-        McpSchema.ServerCapabilities.builder().tools(true).build();
+        McpSchema.ServerCapabilities.builder()
+            .tools(true)
+            .prompts(true)
+            .resources(false, true)
+            .build();
     GatewayInitRequestHandler initRequestHandler =
         new GatewayInitRequestHandler(
             transportProvider.protocolVersions(),
@@ -258,10 +288,19 @@ public class McpGatewayAutoConfiguration {
   @ConditionalOnMissingBean(CatalogRefresher.class)
   public CatalogRefresher catalogRefresher(
       ToolRegistry toolRegistry,
+      PromptRegistry promptRegistry,
+      ResourceRegistry resourceRegistry,
       McpGatewayProperties properties,
       HttpServletStreamableServerTransportProvider transportProvider) {
     return new CatalogRefresher(
-        toolRegistry,
+        () -> {
+          // Not short-circuited: every registry must refresh even if an earlier one already
+          // reported a change.
+          boolean toolsChanged = toolRegistry.refresh();
+          boolean promptsChanged = promptRegistry.refresh();
+          boolean resourcesChanged = resourceRegistry.refresh();
+          return toolsChanged || promptsChanged || resourcesChanged;
+        },
         properties.refreshInterval(),
         () ->
             transportProvider

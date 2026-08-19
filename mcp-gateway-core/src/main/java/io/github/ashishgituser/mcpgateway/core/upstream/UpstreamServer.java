@@ -4,6 +4,13 @@ import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import io.modelcontextprotocol.spec.McpSchema.GetPromptRequest;
+import io.modelcontextprotocol.spec.McpSchema.GetPromptResult;
+import io.modelcontextprotocol.spec.McpSchema.Prompt;
+import io.modelcontextprotocol.spec.McpSchema.ReadResourceRequest;
+import io.modelcontextprotocol.spec.McpSchema.ReadResourceResult;
+import io.modelcontextprotocol.spec.McpSchema.Resource;
+import io.modelcontextprotocol.spec.McpSchema.ResourceTemplate;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import java.util.List;
 import java.util.function.Function;
@@ -62,6 +69,27 @@ public class UpstreamServer {
 
   public CallToolResult callTool(CallToolRequest request) {
     return guarded("tools/call", client -> client.callTool(request));
+  }
+
+  public List<Resource> listResources() {
+    return guarded("resources/list", client -> client.listResources().resources());
+  }
+
+  public List<ResourceTemplate> listResourceTemplates() {
+    return guarded(
+        "resources/templates/list", client -> client.listResourceTemplates().resourceTemplates());
+  }
+
+  public ReadResourceResult readResource(ReadResourceRequest request) {
+    return guarded("resources/read", client -> client.readResource(request));
+  }
+
+  public List<Prompt> listPrompts() {
+    return guarded("prompts/list", client -> client.listPrompts().prompts());
+  }
+
+  public GetPromptResult getPrompt(GetPromptRequest request) {
+    return guarded("prompts/get", client -> client.getPrompt(request));
   }
 
   public void ping() {
