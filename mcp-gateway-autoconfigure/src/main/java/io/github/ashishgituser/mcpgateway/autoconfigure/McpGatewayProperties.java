@@ -13,6 +13,7 @@ public record McpGatewayProperties(
     @DefaultValue("true") boolean enabled,
     @DefaultValue("/mcp") String mcpEndpoint,
     @DefaultValue("20s") Duration requestTimeout,
+    @DefaultValue("60s") Duration refreshInterval,
     List<Server> servers,
     Policy policy,
     Audit audit,

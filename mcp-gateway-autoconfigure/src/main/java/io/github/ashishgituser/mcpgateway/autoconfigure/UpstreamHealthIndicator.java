@@ -22,7 +22,7 @@ public class UpstreamHealthIndicator implements HealthIndicator {
     boolean allUp = true;
     for (UpstreamServer server : upstreamServers) {
       try {
-        server.client().ping();
+        server.ping();
         details.put(server.id(), "UP");
       } catch (RuntimeException e) {
         allUp = false;

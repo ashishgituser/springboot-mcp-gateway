@@ -12,6 +12,7 @@ import io.github.ashishgituser.mcpgateway.core.protocol.GatewayInitRequestHandle
 import io.github.ashishgituser.mcpgateway.core.protocol.GatewayServerHandlers;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.Bucket4jRateLimiter;
 import io.github.ashishgituser.mcpgateway.core.ratelimit.RateLimiter;
+import io.github.ashishgituser.mcpgateway.core.routing.CatalogRefresher;
 import io.github.ashishgituser.mcpgateway.core.routing.GatewayRouter;
 import io.github.ashishgituser.mcpgateway.core.routing.ToolRegistry;
 import io.github.ashishgituser.mcpgateway.core.upstream.UpstreamClientFactory;
@@ -222,6 +223,26 @@ public class McpGatewayAutoConfiguration {
             sessionId -> Mono.empty());
     transportProvider.setSessionFactory(sessionFactory);
     return sessionFactory;
+  }
+
+  /**
+   * Keeps the published catalog in step with the upstreams: one that was down at boot joins on a
+   * later pass, and one that gained or lost tools is picked up without a restart. Set {@code
+   * mcp.gateway.refresh-interval=0} to freeze the catalog at whatever startup found.
+   */
+  @Bean(initMethod = "start", destroyMethod = "close")
+  @ConditionalOnMissingBean(CatalogRefresher.class)
+  public CatalogRefresher catalogRefresher(
+      ToolRegistry toolRegistry,
+      McpGatewayProperties properties,
+      HttpServletStreamableServerTransportProvider transportProvider) {
+    return new CatalogRefresher(
+        toolRegistry,
+        properties.refreshInterval(),
+        () ->
+            transportProvider
+                .notifyClients(McpSchema.METHOD_NOTIFICATION_TOOLS_LIST_CHANGED, null)
+                .subscribe());
   }
 
   @Bean

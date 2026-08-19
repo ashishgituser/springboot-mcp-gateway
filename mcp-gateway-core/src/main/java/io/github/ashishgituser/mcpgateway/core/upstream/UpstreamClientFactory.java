@@ -4,15 +4,20 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 
-/** Connects to an upstream MCP server over streamable HTTP and initializes the MCP session. */
+/**
+ * Describes how to reach an upstream MCP server over streamable HTTP. The session is opened by
+ * {@link UpstreamServer} on first use rather than here, so building the gateway never blocks on an
+ * upstream being up.
+ */
 public class UpstreamClientFactory {
 
   public UpstreamServer connect(UpstreamServerDefinition definition) {
+    return new UpstreamServer(definition.id(), () -> newClient(definition));
+  }
+
+  private static McpSyncClient newClient(UpstreamServerDefinition definition) {
     HttpClientStreamableHttpTransport transport =
         HttpClientStreamableHttpTransport.builder(definition.endpoint()).build();
-    McpSyncClient client =
-        McpClient.sync(transport).requestTimeout(definition.requestTimeout()).build();
-    client.initialize();
-    return new UpstreamServer(definition.id(), client);
+    return McpClient.sync(transport).requestTimeout(definition.requestTimeout()).build();
   }
 }

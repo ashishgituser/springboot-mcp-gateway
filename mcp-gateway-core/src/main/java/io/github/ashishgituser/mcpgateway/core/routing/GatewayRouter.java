@@ -125,7 +125,7 @@ public class GatewayRouter {
               .arguments(request.arguments())
               .meta(request.meta())
               .build();
-      CallToolResult result = upstreamServer.client().callTool(forwarded);
+      CallToolResult result = upstreamServer.callTool(forwarded);
 
       observation.lowCardinalityKeyValue("outcome", "allowed");
       audit(startedAt, startNanos, principal, namespacedName, AuditOutcome.ALLOWED, null);
